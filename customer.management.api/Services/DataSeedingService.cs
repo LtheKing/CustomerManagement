@@ -26,6 +26,30 @@ namespace customer.management.api.Services
             }
         }
 
+        public async Task ForceReseedAsync()
+        {
+            try
+            {
+                Console.WriteLine("Force reseeding - clearing existing data...");
+                
+                // Clear all data
+                _context.CustomerTraffic.RemoveRange(_context.CustomerTraffic);
+                _context.Sales.RemoveRange(_context.Sales);
+                _context.Customers.RemoveRange(_context.Customers);
+                _context.Users.RemoveRange(_context.Users);
+                await _context.SaveChangesAsync();
+                
+                Console.WriteLine("Existing data cleared, starting fresh seeding...");
+                
+                // Now seed fresh data
+                await SeedDataAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error during force reseed: {ex.Message}", ex);
+            }
+        }
+
         public async Task SeedDataAsync()
         {
             try
@@ -36,8 +60,11 @@ namespace customer.management.api.Services
                 // Check if data already exists
                 if (await _context.Users.AnyAsync())
                 {
+                    Console.WriteLine("Data already exists, skipping seeding...");
                     return; // Data already seeded
                 }
+                
+                Console.WriteLine("Starting data seeding...");
             }
             catch (Exception ex)
             {

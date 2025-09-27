@@ -56,5 +56,25 @@ namespace customer.management.api.Controllers
                 });
             }
         }
+
+        // POST: api/seed/force
+        [HttpPost("force")]
+        public async Task<IActionResult> ForceReseed()
+        {
+            try
+            {
+                await _seedingService.ForceReseedAsync();
+                return Ok(new { message = "Data force reseeded successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { 
+                    message = "Error force reseeding data", 
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
     }
 }
