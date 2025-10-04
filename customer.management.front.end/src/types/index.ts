@@ -1,37 +1,47 @@
-// Customer Management Types
+// Customer Management Types - Updated to match backend API
 
 export interface Customer {
-  id: number;
+  id: string;
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   address?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  company?: string;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy: string;
+  user: User;
+  sales: Sale[];
+  traffic: CustomerTraffic[];
+}
+
+export interface Sale {
+  id: string;
+  customerId: string;
+  product: string;
+  quantity: number;
+  amount: number;
+  saleDate: string;
+  createdBy: string;
+  customer: Customer;
+  user: User;
 }
 
 export interface CustomerTraffic {
-  id: number;
-  customerId: number;
-  visitDate: Date;
+  id: string;
+  customerId: string;
   pageViews: number;
   sessionDuration: number;
-}
-
-export interface Sales {
-  id: number;
-  customerId: number;
-  productName: string;
-  amount: number;
-  saleDate: Date;
+  lastVisit: string;
+  createdBy: string;
 }
 
 export interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
-  role: 'admin' | 'user' | 'manager';
-  isActive: boolean;
+  role: string;
+  createdAt: string;
 }
 
 // API Response Types
@@ -47,4 +57,24 @@ export interface PaginatedResponse<T> {
   pageNumber: number;
   pageSize: number;
   totalPages: number;
+}
+
+// Dashboard Data Types
+export interface DashboardStats {
+  totalRevenue: number;
+  totalCustomers: number;
+  activeCustomers: number;
+  avgOrderValue: number;
+}
+
+export interface SalesData {
+  month: string;
+  sales: number;
+  customers: number;
+}
+
+// Loading and Error States
+export interface LoadingState {
+  isLoading: boolean;
+  error: string | null;
 }

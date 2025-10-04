@@ -1,4 +1,4 @@
-@customer.management.api_HostAddress = http://localhost:5094
+@customer.management.api_HostAddress = https://localhost:44372
 
 GET {{customer.management.api_HostAddress}}/weatherforecast/
 Accept: application/json
