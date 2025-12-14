@@ -11,7 +11,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://localhost:4372")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://localhost:4372", 
+                          "http://localhost:80", "http://frontend:5173", "http://frontend:80")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -53,11 +54,40 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Seed data on startup
-using (var scope = app.Services.CreateScope())
+// Seed data on startup with retry logic
+_ = Task.Run(async () =>
 {
-    var seedingService = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
-    await seedingService.SeedDataAsync();
-}
+    const int maxRetries = 10;
+    const int delaySeconds = 5;
+    
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var seedingService = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
+            
+            // Test connection first
+            if (await seedingService.TestConnectionAsync())
+            {
+                await seedingService.SeedDataAsync();
+                Console.WriteLine("Data seeding completed successfully.");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Attempt {i + 1}/{maxRetries}: Database not ready yet. Error: {ex.Message}");
+            if (i < maxRetries - 1)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+            }
+            else
+            {
+                Console.WriteLine($"Failed to seed data after {maxRetries} attempts. Application will continue without seeded data.");
+            }
+        }
+    }
+});
 
 app.Run();

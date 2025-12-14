@@ -1,0 +1,69 @@
+services:
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: customer-management-db-prod
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data_prod:/var/opt/mssql
+    networks:
+      - customer-management-network
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # .NET API
+  api:
+    build:
+      context: .
+      dockerfile: ./customer.management.api/Dockerfile
+      args:
+        - BUILD_CONFIGURATION=Release
+    container_name: customer-management-api-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=CustomerManagementDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;MultipleActiveResultSets=true
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - customer-management-network
+    restart: unless-stopped
+
+  # React Frontend (Production - Nginx)
+  frontend:
+    build:
+      context: ./customer.management.front.end
+      dockerfile: Dockerfile.prod
+    container_name: customer-management-frontend-prod
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - customer-management-network
+    restart: unless-stopped
+
+networks:
+  customer-management-network:
+    driver: bridge
+
+volumes:
+  sqlserver_data_prod:
+
