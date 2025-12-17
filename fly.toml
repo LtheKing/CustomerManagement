@@ -1,44 +1,50 @@
-# Fly.io configuration for Customer Management API
-# This file should be at the repository root
+# fly.toml app configuration file generated for customer-management-api-shy-surf-8080 on 2025-12-17T18:02:17+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "customer-management-api"
-primary_region = "iad"  # Change to your preferred region (iad, ord, dfw, etc.)
+app = 'customer-management-api-shy-surf-8080'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "customer.management.api/Dockerfile"
-  # Build context is the repository root (where this fly.toml is located)
+  dockerfile = 'customer.management.api/Dockerfile'
 
 [env]
-  ASPNETCORE_ENVIRONMENT = "Production"
-  ASPNETCORE_URLS = "http://+:8080"
-  PORT = "8080"
+  ASPNETCORE_ENVIRONMENT = 'Production'
+  ASPNETCORE_URLS = 'http://+:8080'
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
-    method = "GET"
-    timeout = "5s"
-    path = "/api/seed/test"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/seed/test'
 
 [[services]]
-  protocol = "tcp"
+  protocol = 'tcp'
   internal_port = 8080
-  processes = ["app"]
+  processes = ['app']
 
   [[services.ports]]
     port = 80
-    handlers = ["http"]
+    handlers = ['http']
     force_https = true
 
   [[services.ports]]
     port = 443
-    handlers = ["tls", "http"]
+    handlers = ['tls', 'http']
 
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256

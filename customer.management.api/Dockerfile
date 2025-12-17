@@ -12,13 +12,21 @@ COPY customer.management.data.entity/customer.management.data.entity.csproj ./cu
 WORKDIR /src/customer.management.api
 RUN dotnet restore customer.management.api.csproj
 
-# Copy the rest of the source code
+# Copy the rest of the source code (excluding bin/obj via .dockerignore)
 COPY customer.management.api/ ./customer.management.api/
 COPY customer.management.data.entity/ ../customer.management.data.entity/
 
-# Build the application
+# Clean only bin directories (keep obj for project.assets.json)
+WORKDIR /src
+RUN rm -rf customer.management.api/bin 2>/dev/null || true
+RUN rm -rf customer.management.data.entity/bin 2>/dev/null || true
+
+# Restore again after copying all files to ensure everything is in sync
 WORKDIR /src/customer.management.api
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet restore customer.management.api.csproj
+
+# Build the application (UseAppHost=false avoids apphost permission issues)
+RUN dotnet publish -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # Stage 2: Create the runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
