@@ -33,8 +33,10 @@ namespace customer.management.api.Services
                 Console.WriteLine("Force reseeding - clearing existing data...");
                 
                 // Clear all data
+                _context.SalesTransactionItems.RemoveRange(_context.SalesTransactionItems);
                 _context.CustomerTraffic.RemoveRange(_context.CustomerTraffic);
                 _context.Sales.RemoveRange(_context.Sales);
+                _context.Products.RemoveRange(_context.Products);
                 _context.Customers.RemoveRange(_context.Customers);
                 _context.Users.RemoveRange(_context.Users);
                 await _context.SaveChangesAsync();
@@ -75,12 +77,16 @@ namespace customer.management.api.Services
             var users = await CreateUsersAsync();
             await _context.SaveChangesAsync();
 
+            // Create products first
+            var products = await CreateProductsAsync();
+            await _context.SaveChangesAsync();
+
             // Create customers
             var customers = await CreateCustomersAsync(users);
             await _context.SaveChangesAsync();
 
             // Create sales
-            await CreateSalesAsync(customers, users);
+            await CreateSalesAsync(customers, users, products);
             await _context.SaveChangesAsync();
 
             // Create customer traffic
@@ -214,9 +220,78 @@ namespace customer.management.api.Services
             return Task.FromResult(customers);
         }
 
-        private Task CreateSalesAsync(List<CustomerModelEntity> customers, List<UserModelEntity> users)
+        private Task<List<ProductsModelEntity>> CreateProductsAsync()
         {
-            var products = new[] { "Software License", "Cloud Service", "Consulting", "Support Package", "Training", "Hardware" };
+            var products = new List<ProductsModelEntity>
+            {
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                    Name = "Software License - Basic",
+                    SKU = "SW-LIC-BASIC",
+                    Price = 299.99m,
+                    Stock = 100,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-60)
+                },
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                    Name = "Software License - Professional",
+                    SKU = "SW-LIC-PRO",
+                    Price = 599.99m,
+                    Stock = 75,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-60)
+                },
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                    Name = "Cloud Service - Starter",
+                    SKU = "CLOUD-STARTER",
+                    Price = 49.99m,
+                    Stock = 200,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-55)
+                },
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                    Name = "Cloud Service - Enterprise",
+                    SKU = "CLOUD-ENTERPRISE",
+                    Price = 199.99m,
+                    Stock = 50,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-55)
+                },
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                    Name = "Consulting Services",
+                    SKU = "CONSULT-HOURLY",
+                    Price = 150.00m,
+                    Stock = 1000,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-50)
+                },
+                new ProductsModelEntity
+                {
+                    Id = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                    Name = "Support Package - Basic",
+                    SKU = "SUPPORT-BASIC",
+                    Price = 99.99m,
+                    Stock = 500,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-45)
+                }
+            };
+
+            _context.Products.AddRange(products);
+            return Task.FromResult(products);
+        }
+
+        private Task CreateSalesAsync(List<CustomerModelEntity> customers, List<UserModelEntity> users, List<ProductsModelEntity> products)
+        {
             var random = new Random();
 
             var sales = new List<SalesModelEntity>();
@@ -227,16 +302,15 @@ namespace customer.management.api.Services
                 var salesCount = random.Next(2, 6);
                 for (int i = 0; i < salesCount; i++)
                 {
-                    var product = products[random.Next(products.Length)];
+                    var product = products[random.Next(products.Count)];
                     var quantity = random.Next(1, 10);
-                    var unitPrice = random.Next(100, 5000);
-                    var amount = quantity * unitPrice;
+                    var amount = quantity * product.Price;
 
                     sales.Add(new SalesModelEntity
                     {
                         Id = Guid.NewGuid(),
                         CustomerId = customer.Id,
-                        Product = product,
+                        ProductId = product.Id,
                         Quantity = quantity,
                         Amount = amount,
                         SaleDate = DateTime.UtcNow.AddDays(-random.Next(1, 20)),

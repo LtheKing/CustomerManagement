@@ -13,6 +13,8 @@ namespace customer.management.data.entity.DbContext
         public DbSet<UserModelEntity> Users { get; set; }
         public DbSet<SalesModelEntity> Sales { get; set; }
         public DbSet<CustomerTrafficModelEntity> CustomerTraffic { get; set; }
+        public DbSet<ProductsModelEntity> Products { get; set; }
+        public DbSet<SalesTransactionItemModelEntity> SalesTransactionItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -22,8 +24,8 @@ namespace customer.management.data.entity.DbContext
             modelBuilder.Entity<CustomerModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasDefaultValueSql("newid()");
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("getutcdate()");
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
                 // Configure relationship with User
                 entity.HasOne(e => e.User)
@@ -36,20 +38,32 @@ namespace customer.management.data.entity.DbContext
             modelBuilder.Entity<UserModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasDefaultValueSql("newid()");
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("getutcdate()");
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
                 // Configure unique constraints
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
             });
 
+            // Configure Products entity
+            modelBuilder.Entity<ProductsModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Configure unique constraint for SKU
+                entity.HasIndex(e => e.SKU).IsUnique();
+            });
+
             // Configure Sales entity
             modelBuilder.Entity<SalesModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasDefaultValueSql("newid()");
-                entity.Property(e => e.SaleDate).HasDefaultValueSql("getutcdate()");
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
                 
                 // Configure relationship with Customer
@@ -69,14 +83,35 @@ namespace customer.management.data.entity.DbContext
             modelBuilder.Entity<CustomerTrafficModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasDefaultValueSql("newid()");
-                entity.Property(e => e.VisitDate).HasDefaultValueSql("getutcdate()");
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.VisitDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
                 // Configure relationship with Customer
                 entity.HasOne(e => e.Customer)
                       .WithMany(c => c.Traffic)
                       .HasForeignKey(e => e.CustomerId)
                       .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure SalesTransactionItems entity
+            modelBuilder.Entity<SalesTransactionItemModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.SubTotal).HasColumnType("decimal(18,2)");
+                
+                // Configure relationship with SalesTransaction
+                entity.HasOne(e => e.Transaction)
+                      .WithMany(t => t.Items)
+                      .HasForeignKey(e => e.TransactionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                // Configure relationship with Product
+                entity.HasOne(e => e.Product)
+                      .WithMany(p => p.TransactionItems)
+                      .HasForeignKey(e => e.ProductId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }
