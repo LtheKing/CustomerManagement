@@ -41,7 +41,10 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
-// Enable CORS - Must be early in the pipeline to handle preflight requests
+// Enable routing first
+app.UseRouting();
+
+// Enable CORS - Must be after UseRouting() but before UseAuthorization()
 app.UseCors("AllowReactApp");
 
 if (app.Environment.IsDevelopment())
