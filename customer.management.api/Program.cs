@@ -24,7 +24,7 @@ builder.Services.AddCors(options =>
                 "http://frontend:80",
                 "https://customer-management-git-development-lthekings-projects.vercel.app", //frontend dev
                 "https://customer-management-ausacx8p4-lthekings-projects.vercel.app", //frontend preview
-                "https://customer-management-be-git-development-lthekings-projects.vercel.app", //backend dev
+                "https://customer-management-be-git-development-lthekings-projects.vercel.app/api/customers", //backend dev
             };
         
         // Add Vercel URL if configured via environment variable
