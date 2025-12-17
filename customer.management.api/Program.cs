@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using customer.management.data.entity.DbContext;
 using customer.management.api.Services;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,11 +12,46 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://localhost:4372", 
-                          "http://localhost:80", "http://frontend:5173", "http://frontend:80")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        // Get allowed origins from configuration or use defaults
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+            ?? new[] 
+            {
+                "http://localhost:5173", 
+                "http://localhost:3000", 
+                "https://localhost:4372",
+                "http://localhost:80", 
+                "http://frontend:5173", 
+                "http://frontend:80"
+            };
+        
+        // Add Vercel URL if configured via environment variable
+        // For Vercel preview deployments, add each URL individually or use Cors:AllowAllOrigins
+        var vercelUrl = builder.Configuration["VercelUrl"];
+        if (!string.IsNullOrEmpty(vercelUrl))
+        {
+            var originsList = allowedOrigins.ToList();
+            originsList.Add(vercelUrl);
+            allowedOrigins = originsList.ToArray();
+        }
+        
+        // For production, allow all origins if configured (useful for Vercel preview deployments)
+        // Note: This is less secure but flexible. Use specific origins when possible.
+        var allowAllOrigins = builder.Configuration.GetValue<bool>("Cors:AllowAllOrigins", false);
+        
+        if (allowAllOrigins)
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        
     });
 });
 
@@ -31,7 +67,7 @@ builder.Services.AddSwaggerGen();
 
 // Add Entity Framework
 builder.Services.AddDbContext<CustomerManagementDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Data Seeding Service
 builder.Services.AddScoped<DataSeedingService>();
