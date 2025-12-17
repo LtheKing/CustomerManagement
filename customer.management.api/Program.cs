@@ -7,40 +7,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Add CORS
+// Add CORS - Allow all origins
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        // Get allowed origins from configuration or use defaults
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] 
-            {
-                "http://localhost:5173", 
-                "http://localhost:3000", 
-                "https://localhost:44372",
-                "http://localhost:80", 
-                "http://frontend:5173", 
-                "http://frontend:80",
-                "https://customer-management-git-development-lthekings-projects.vercel.app", //frontend dev
-                "https://customer-management-ausacx8p4-lthekings-projects.vercel.app", //frontend preview
-                "https://customer-management-be-git-development-lthekings-projects.vercel.app/api/customers", //backend dev
-            };
-        
-        // Add Vercel URL if configured via environment variable
-        // For Vercel preview deployments, add each URL individually or use Cors:AllowAllOrigins
-        var vercelUrl = builder.Configuration["VercelUrl"];
-        if (!string.IsNullOrEmpty(vercelUrl))
-        {
-            var originsList = allowedOrigins.ToList();
-            originsList.Add(vercelUrl);
-            allowedOrigins = originsList.ToArray();
-        }
-        
-        policy.WithOrigins(allowedOrigins)
+        // Allow all origins, headers, and methods
+        // Note: AllowAnyOrigin() cannot be used with AllowCredentials()
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
