@@ -18,12 +18,13 @@ builder.Services.AddCors(options =>
             {
                 "http://localhost:5173", 
                 "http://localhost:3000", 
-                "https://localhost:4372",
+                "https://localhost:44372",
                 "http://localhost:80", 
                 "http://frontend:5173", 
                 "http://frontend:80",
-                "https://customer-management-git-development-lthekings-projects.vercel.app/", //dev
-                "https://customer-management-ausacx8p4-lthekings-projects.vercel.app/", //preview
+                "https://customer-management-git-development-lthekings-projects.vercel.app", //frontend dev
+                "https://customer-management-ausacx8p4-lthekings-projects.vercel.app", //frontend preview
+                "https://customer-management-be-git-development-lthekings-projects.vercel.app", //backend dev
             };
         
         // Add Vercel URL if configured via environment variable
@@ -36,24 +37,10 @@ builder.Services.AddCors(options =>
             allowedOrigins = originsList.ToArray();
         }
         
-        // For production, allow all origins if configured (useful for Vercel preview deployments)
-        // Note: This is less secure but flexible. Use specific origins when possible.
-        var allowAllOrigins = builder.Configuration.GetValue<bool>("Cors:AllowAllOrigins", false);
-        
-        if (allowAllOrigins)
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
-        else
-        {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        }
-        
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -77,14 +64,15 @@ builder.Services.AddScoped<DataSeedingService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
+// Enable CORS - Must be early in the pipeline to handle preflight requests
+app.UseCors("AllowReactApp");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-// Enable CORS
-app.UseCors("AllowReactApp");
 
 app.UseHttpsRedirection();
 
