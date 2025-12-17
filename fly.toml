@@ -1,0 +1,44 @@
+# Fly.io configuration for Customer Management API
+# This file should be at the repository root
+
+app = "customer-management-api"
+primary_region = "iad"  # Change to your preferred region (iad, ord, dfw, etc.)
+
+[build]
+  dockerfile = "customer.management.api/Dockerfile"
+  # Build context is the repository root (where this fly.toml is located)
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ASPNETCORE_URLS = "http://+:8080"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/seed/test"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
