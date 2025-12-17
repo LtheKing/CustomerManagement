@@ -21,7 +21,9 @@ builder.Services.AddCors(options =>
                 "https://localhost:4372",
                 "http://localhost:80", 
                 "http://frontend:5173", 
-                "http://frontend:80"
+                "http://frontend:80",
+                "https://customer-management-git-development-lthekings-projects.vercel.app/", //dev
+                "https://customer-management-ausacx8p4-lthekings-projects.vercel.app/", //preview
             };
         
         // Add Vercel URL if configured via environment variable
