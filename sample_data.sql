@@ -184,6 +184,42 @@ INSERT INTO "SalesTransactionItems" ("Id", "TransactionId", "ProductId", "Quanti
 ON CONFLICT ("Id") DO NOTHING;
 
 -- =====================================================
+-- 7. CAPITAL CASH (No dependencies)
+-- =====================================================
+INSERT INTO capitalcash (id, balance, updated_at) VALUES
+('55555555-5555-5555-5555-555555555555', 10000.00, NOW() - INTERVAL '7 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
+-- 8. EXPENSES (No dependencies)
+-- =====================================================
+INSERT INTO expenses (id, description, amount, expensedate) VALUES
+('66666666-6666-6666-6666-666666666661', 'Office rent', 1200.00, NOW() - INTERVAL '10 days'),
+('66666666-6666-6666-6666-666666666662', 'Internet service', 80.00, NOW() - INTERVAL '9 days'),
+('66666666-6666-6666-6666-666666666663', 'Marketing campaign', 450.00, NOW() - INTERVAL '5 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
+-- 9. SALES ALLOCATION (Depends on Sales)
+-- =====================================================
+INSERT INTO salesallocation (id, salestransactionid, tocapital, toowner, allocationdate) VALUES
+('77777777-7777-7777-7777-777777777771', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 900.00, 199.95, NOW() - INTERVAL '9 days'),
+('77777777-7777-7777-7777-777777777772', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 1200.00, 599.97, NOW() - INTERVAL '8 days'),
+('77777777-7777-7777-7777-777777777773', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 1500.00, 1099.98, NOW() - INTERVAL '10 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
+-- 10. CASH FLOW (References Sales / Expenses / Owner Take)
+-- =====================================================
+INSERT INTO cashflow (id, flowtype, referenceid, amount, flowdate) VALUES
+('88888888-8888-8888-8888-888888888881', 'SALE', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 1499.95, NOW() - INTERVAL '10 days'),
+('88888888-8888-8888-8888-888888888882', 'SALE', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 1799.97, NOW() - INTERVAL '9 days'),
+('88888888-8888-8888-8888-888888888883', 'EXPENSE', '66666666-6666-6666-6666-666666666661', 1200.00, NOW() - INTERVAL '10 days'),
+('88888888-8888-8888-8888-888888888884', 'EXPENSE', '66666666-6666-6666-6666-666666666663', 450.00, NOW() - INTERVAL '5 days'),
+('88888888-8888-8888-8888-888888888885', 'OWNER_TAKE', '77777777-7777-7777-7777-777777777771', 199.95, NOW() - INTERVAL '9 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
 -- Verification Queries
 -- =====================================================
 
@@ -199,6 +235,14 @@ UNION ALL
 SELECT 'CustomerTraffic', COUNT(*) FROM "CustomerTraffic"
 UNION ALL
 SELECT 'SalesTransactionItems', COUNT(*) FROM "SalesTransactionItems"
+UNION ALL
+SELECT 'CapitalCash', COUNT(*) FROM capitalcash
+UNION ALL
+SELECT 'Expenses', COUNT(*) FROM expenses
+UNION ALL
+SELECT 'SalesAllocation', COUNT(*) FROM salesallocation
+UNION ALL
+SELECT 'CashFlow', COUNT(*) FROM cashflow
 ORDER BY "Table";
 
 -- Sample query: Sales with customer and product details

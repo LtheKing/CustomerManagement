@@ -8,6 +8,8 @@
 
 -- Enable UUID extension (required for gen_random_uuid())
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- Optional extension if you want uuid_generate_v4() (some scripts use it)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
 -- Table: Users
@@ -149,6 +151,50 @@ CREATE TABLE IF NOT EXISTS "SalesTransactionItems" (
 -- Indexes for SalesTransactionItems
 CREATE INDEX IF NOT EXISTS "IX_SalesTransactionItems_TransactionId" ON "SalesTransactionItems" ("TransactionId");
 CREATE INDEX IF NOT EXISTS "IX_SalesTransactionItems_ProductId" ON "SalesTransactionItems" ("ProductId");
+
+-- =====================================================
+-- Additional Tables (Cash / Expenses)
+-- Note: these were created with unquoted identifiers in your query,
+-- so PostgreSQL stores them as lowercase.
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS capitalcash (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    balance NUMERIC(18,2) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    description VARCHAR(255) NOT NULL,
+    amount NUMERIC(18,2) NOT NULL,
+    expensedate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add CashierName to Sales table (quoted table + quoted column)
+ALTER TABLE IF EXISTS public."Sales"
+    ADD COLUMN IF NOT EXISTS "CashierName" character varying;
+
+CREATE TABLE IF NOT EXISTS salesallocation (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    salestransactionid UUID NOT NULL,
+    tocapital NUMERIC(18,2) NOT NULL CHECK (tocapital >= 0),
+    toowner NUMERIC(18,2) NOT NULL CHECK (toowner >= 0),
+    allocationdate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_salesallocation_salestransactionid ON salesallocation (salestransactionid);
+
+CREATE TABLE IF NOT EXISTS cashflow (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    flowtype VARCHAR(20) NOT NULL,
+    referenceid UUID NOT NULL,
+    amount NUMERIC(18,2) NOT NULL,
+    flowdate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_cashflow_flowdate ON cashflow (flowdate);
+CREATE INDEX IF NOT EXISTS ix_cashflow_flowtype ON cashflow (flowtype);
 
 -- =====================================================
 -- End of Schema Creation

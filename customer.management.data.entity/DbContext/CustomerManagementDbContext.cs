@@ -15,6 +15,10 @@ namespace customer.management.data.entity.DbContext
         public DbSet<CustomerTrafficModelEntity> CustomerTraffic { get; set; }
         public DbSet<ProductsModelEntity> Products { get; set; }
         public DbSet<SalesTransactionItemModelEntity> SalesTransactionItems { get; set; }
+        public DbSet<CapitalCashModelEntity> CapitalCash { get; set; }
+        public DbSet<ExpenseModelEntity> Expenses { get; set; }
+        public DbSet<SalesAllocationModelEntity> SalesAllocations { get; set; }
+        public DbSet<CashFlowModelEntity> CashFlows { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -112,6 +116,52 @@ namespace customer.management.data.entity.DbContext
                       .WithMany(p => p.TransactionItems)
                       .HasForeignKey(e => e.ProductId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure CapitalCash entity (table created as unquoted CapitalCash => lowercase in PG)
+            modelBuilder.Entity<CapitalCashModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Balance).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // Configure Expenses entity (table created as unquoted Expenses => lowercase in PG)
+            modelBuilder.Entity<ExpenseModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ExpenseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // Configure SalesAllocation entity (table created as unquoted SalesAllocation => lowercase in PG)
+            modelBuilder.Entity<SalesAllocationModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.ToCapital).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ToOwner).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.AllocationDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Relationship to Sales (your SQL didn't add FK, but EF can still model it)
+                entity.HasOne(e => e.SalesTransaction)
+                      .WithMany()
+                      .HasForeignKey(e => e.SalesTransactionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure CashFlow entity (table created as unquoted CashFlow => lowercase in PG)
+            modelBuilder.Entity<CashFlowModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.FlowDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Optional: enforce max length at DB level if migrations are used
+                entity.Property(e => e.FlowType).HasMaxLength(20);
             });
         }
     }
