@@ -20,6 +20,7 @@ namespace customer.management.data.entity.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
+        [MaxLength(255)]
         public string? CashierName { get; set; }
         
         public DateTime SaleDate { get; set; }

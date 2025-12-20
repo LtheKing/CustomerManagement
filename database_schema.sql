@@ -158,39 +158,65 @@ CREATE INDEX IF NOT EXISTS "IX_SalesTransactionItems_ProductId" ON "SalesTransac
 -- so PostgreSQL stores them as lowercase.
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS capitalcash (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    balance NUMERIC(18,2) NOT NULL,
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE CapitalCash (
+    Id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    Balance NUMERIC(18,2) NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS expenses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE Expenses (
+    Id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     description VARCHAR(255) NOT NULL,
-    amount NUMERIC(18,2) NOT NULL,
-    expensedate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    Amount NUMERIC(18,2) NOT NULL,
+    ExpenseDate TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Add CashierName to Sales table (quoted table + quoted column)
-ALTER TABLE IF EXISTS public."Sales"
-    ADD COLUMN IF NOT EXISTS "CashierName" character varying;
+-- Add/normalize cashier name column on Sales table.
+-- We prefer an unquoted lowercase column to avoid case-sensitivity issues in PostgreSQL.
+DO $$
+BEGIN
+    -- If a quoted mixed-case column exists, rename it to lowercase
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'Sales'
+          AND column_name = 'CashierName'
+    ) THEN
+        EXECUTE 'ALTER TABLE public."Sales" RENAME COLUMN "CashierName" TO cashiername';
+    END IF;
 
-CREATE TABLE IF NOT EXISTS salesallocation (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    salestransactionid UUID NOT NULL,
-    tocapital NUMERIC(18,2) NOT NULL CHECK (tocapital >= 0),
-    toowner NUMERIC(18,2) NOT NULL CHECK (toowner >= 0),
-    allocationdate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- If the lowercase column doesn't exist, add it
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'Sales'
+          AND column_name = 'cashiername'
+    ) THEN
+        EXECUTE 'ALTER TABLE public."Sales" ADD COLUMN cashiername character varying';
+    END IF;
+END
+$$;
+
+CREATE TABLE SalesAllocation (
+    Id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    SalesTransactionId UUID NOT NULL,
+    ToCapital NUMERIC(18,2) NOT NULL CHECK (ToCapital >= 0),
+    ToOwner NUMERIC(18,2) NOT NULL CHECK (ToOwner >= 0),
+    AllocationDate TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS ix_salesallocation_salestransactionid ON salesallocation (salestransactionid);
 
-CREATE TABLE IF NOT EXISTS cashflow (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    flowtype VARCHAR(20) NOT NULL,
-    referenceid UUID NOT NULL,
-    amount NUMERIC(18,2) NOT NULL,
-    flowdate TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE CashFlow (
+    Id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    FlowType VARCHAR(20) NOT NULL, -- SALE, EXPENSE, OWNER_TAKE
+    ReferenceId UUID NOT NULL,
+    Amount NUMERIC(18,2) NOT NULL,
+    FlowDate TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS ix_cashflow_flowdate ON cashflow (flowdate);

@@ -77,7 +77,8 @@ builder.Services.AddDbContext<CustomerManagementDbContext>(options =>
             maxRetryCount: 3,
             maxRetryDelay: TimeSpan.FromSeconds(5),
             errorCodesToAdd: null);
-    });
+    })
+    .UseSnakeCaseNamingConvention(); // Convert all table and column names to snake_case
     
     // Log connection string (without password) for debugging
     if (!string.IsNullOrEmpty(connectionString))

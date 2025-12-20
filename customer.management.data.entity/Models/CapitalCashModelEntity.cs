@@ -8,15 +8,13 @@ namespace customer.management.data.entity.Models
     public class CapitalCashModelEntity
     {
         [Key]
-        [Column("id")]
         public Guid Id { get; set; }
 
         [Required]
-        [Column("balance", TypeName = "numeric(18,2)")]
+        [Column(TypeName = "numeric(18,2)")]
         public decimal Balance { get; set; }
 
         [Required]
-        [Column("updated_at")]
         public DateTimeOffset UpdatedAt { get; set; }
     }
 }

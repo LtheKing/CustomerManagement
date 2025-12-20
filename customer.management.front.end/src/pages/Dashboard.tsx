@@ -165,6 +165,9 @@ export const Dashboard = () => {
           <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => setActiveTab("customers")}>
             👥 Customers
           </div>
+            <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => setActiveTab("cashier")}>
+              🧾 Cashier
+            </div>
           <div className="nav-item">
             📈 Analytics
           </div>
@@ -284,6 +287,21 @@ export const Dashboard = () => {
               
               <div className="customers-section">
                 <CustomerTable customers={customers} />
+              </div>
+            </div>
+          ) : activeTab === "cashier" ? (
+            <div className="dashboard-content">
+              <div className="dashboard-header">
+                <h1>Cashier</h1>
+                <p>Record transactions quickly (UI stub for now).</p>
+              </div>
+
+              <div className="table-container">
+                <h3>Point of Sale</h3>
+                <p>
+                  This screen is ready to be wired up to a sales/transaction API. Add product scan/search,
+                  customer selection, and checkout here.
+                </p>
               </div>
             </div>
           ) : null}
