@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
 import { GenericForm, FormField } from "../components/GenericForm";
 import { apiService } from "../services/api";
-import { CashFlow, CreateCashFlowRequest } from "../types";
+import { CashFlow, CreateCashFlowRequest, CreateSalesTransactionRequest, Customer, Product } from "../types";
 import "../assets/page-styles/Cashier.css";
 
 export const Cashier = () => {
     const [capitalCash, setCapitalCash] = useState<number>(0);
     const [_capitalCashId, setCapitalCashId] = useState<string>("");
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isSalesTransactionFormOpen, setIsSalesTransactionFormOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
 
     // Fetch current capital cash balance
     useEffect(() => {
@@ -32,16 +35,32 @@ export const Cashier = () => {
         fetchCapitalCash();
     }, []);
 
+    // Fetch customers and products for sales transaction form
+    useEffect(() => {
+        if (isSalesTransactionFormOpen) {
+            const fetchData = async () => {
+                try {
+                    const [customersData, productsData] = await Promise.all([
+                        apiService.getCustomers(),
+                        apiService.getProducts()
+                    ]);
+                    setCustomers(customersData);
+                    setProducts(productsData);
+                } catch (error) {
+                    console.error("Error fetching customers/products:", error);
+                }
+            };
+            fetchData();
+        } else {
+            // Reset when form closes
+            setCustomers([]);
+            setProducts([]);
+        }
+    }, [isSalesTransactionFormOpen]);
+
     // Form fields configuration for CashFlow
     const getCashFlowFields = (): FormField[] => {
         return [
-            {
-                name: "id",
-                label: "ID",
-                type: "text",
-                disabled: true,
-                placeholder: "Auto-generated",
-            },
             {
                 name: "flowType",
                 label: "Flow Type",
@@ -136,6 +155,178 @@ export const Cashier = () => {
         refreshBalance();
     };
 
+    // Form fields configuration for Sales Transaction
+    const getSalesTransactionFields = (): FormField[] => {
+        const productOptions = products.map(product => ({
+            value: product.id,
+            label: `${product.name} - IDR ${product.price.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+        }));
+
+        // For combobox, we use customer name as both value and label
+        // This allows users to select from list or type a new name
+        const customerOptions = customers.map(customer => ({
+            value: customer.name,
+            label: `${customer.name}${customer.email ? ` (${customer.email})` : ''}`
+        }));
+
+        return [
+            {
+                name: "customerName",
+                label: "Customer Name",
+                type: "combobox",
+                required: true,
+                placeholder: "Type customer name or select from list",
+                options: customerOptions,
+                validation: (value) => {
+                    if (!value || value.trim() === "") {
+                        return "Customer name is required";
+                    }
+                    return null;
+                },
+            },
+            {
+                name: "productId",
+                label: "Product",
+                type: "select",
+                required: true,
+                options: productOptions,
+                validation: (value) => {
+                    if (!value || value === "") {
+                        return "Product is required";
+                    }
+                    return null;
+                },
+            },
+            {
+                name: "quantity",
+                label: "Quantity",
+                type: "number",
+                required: true,
+                placeholder: "Enter quantity",
+                min: 1,
+                step: 1,
+                validation: (value) => {
+                    if (value === null || value === undefined || value === "") {
+                        return "Quantity is required";
+                    }
+                    const numValue = Number(value);
+                    if (isNaN(numValue) || numValue <= 0) {
+                        return "Quantity must be greater than 0";
+                    }
+                    return null;
+                },
+            },
+            {
+                name: "amount",
+                label: "Amount",
+                type: "number",
+                required: true,
+                placeholder: "Auto-calculated",
+                min: 0,
+                step: 0.01,
+                disabled: true,
+                validation: (value) => {
+                    const numValue = Number(value);
+                    if (isNaN(numValue) || numValue <= 0) {
+                        return "Amount must be greater than 0";
+                    }
+                    return null;
+                },
+            },
+            {
+                name: "cashierName",
+                label: "Cashier Name",
+                type: "text",
+                required: true,
+                placeholder: "Enter cashier name",
+                validation: (value) => {
+                    if (!value || value.trim() === "") {
+                        return "Cashier name is required";
+                    }
+                    return null;
+                },
+            },
+        ];
+    };
+
+    // Compute amount from product price * quantity
+    // Uses integer arithmetic (cents) to ensure exact multiplication
+    // Example: 50.00 * 2 = 100.00 (not 99.98)
+    const computeSalesTransactionFields = (formData: Record<string, any>): Record<string, any> => {
+        const computed: Record<string, any> = {};
+        
+        if (formData.productId && formData.quantity && products.length > 0) {
+            const product = products.find(p => p.id === formData.productId);
+            if (product) {
+                const quantity = Number(formData.quantity) || 0;
+                // Convert price to cents (integer) to avoid floating point precision issues
+                // Multiply by 100, then multiply by quantity, then divide by 100
+                // This ensures exact multiplication: 50.00 * 2 = 100.00
+                const priceInCents = Math.round(product.price * 100);
+                const totalInCents = priceInCents * quantity;
+                const calculatedAmount = totalInCents / 100;
+                computed.amount = calculatedAmount;
+            } else {
+                computed.amount = 0;
+            }
+        } else {
+            computed.amount = 0;
+        }
+        
+        return computed;
+    };
+
+    const handleSalesTransactionSubmit = async (data: Partial<CreateSalesTransactionRequest & { customerName?: string }>) => {
+        // Validation
+        if (!data.productId || data.productId.trim() === "") {
+            throw new Error("Product is required");
+        }
+        if (!data.cashierName || data.cashierName.trim() === "") {
+            throw new Error("Cashier name is required");
+        }
+        
+        // Get createdBy from first customer's createdBy (fallback to default user ID from sample data)
+        // TODO: Replace with actual auth context when authentication is implemented
+        const createdBy = customers.length > 0 && customers[0].createdBy 
+            ? customers[0].createdBy 
+            : "11111111-1111-1111-1111-111111111111"; // Default user ID from sample data
+        
+        const quantity = Number(data.quantity);
+        const amount = Number(data.amount);
+        if (isNaN(quantity) || quantity <= 0) {
+            throw new Error("Quantity must be greater than 0");
+        }
+        if (isNaN(amount) || amount <= 0) {
+            throw new Error("Amount must be greater than 0");
+        }
+
+        // Validate customer name is provided
+        const customerName = data.customerName?.trim() || "";
+        if (!customerName) {
+            throw new Error("Customer name is required");
+        }
+
+        // Use hybrid approach: Send customerName directly to sales endpoint
+        // Backend will handle finding existing customer or creating new one
+        const request: CreateSalesTransactionRequest = {
+            customerName: customerName, // Send customerName instead of customerId
+            productId: data.productId || "",
+            quantity: quantity,
+            amount: amount,
+            cashierName: data.cashierName || "",
+            saleDate: new Date().toISOString(), // Optional, backend will default if not provided
+            createdBy: createdBy,
+        };
+
+        const result = await apiService.createSalesTransaction(request);
+        return result;
+    };
+
+    const handleSalesTransactionSuccess = () => {
+        // Refresh the capital cash balance after creating sales transaction
+        handleSuccess();
+    };
+
     return (
         <div className="dashboard-content">
             <div className="dashboard-header">
@@ -160,10 +351,14 @@ export const Cashier = () => {
 
             <div className="table-container">
                 <h3>Point of Sale</h3>
-                <p>
-                    This screen is ready to be wired up to a sales/transaction API. Add product scan/search,
-                    customer selection, and checkout here.
-                </p>
+                <div className="pos-actions">
+                    <button 
+                        className="pos-button"
+                        onClick={() => setIsSalesTransactionFormOpen(true)}
+                    >
+                        ➕ Create Sales Transaction
+                    </button>
+                </div>
             </div>
 
             <GenericForm<CashFlow>
@@ -182,6 +377,28 @@ export const Cashier = () => {
                 onSuccess={handleSuccess}
                 title="Adjust Capital Cash"
                 submitLabel="Create Cash Flow"
+            />
+
+            <GenericForm<CreateSalesTransactionRequest & { customerName?: string }>
+                isOpen={isSalesTransactionFormOpen}
+                onClose={() => setIsSalesTransactionFormOpen(false)}
+                fields={getSalesTransactionFields()}
+                mode="create"
+                initialValues={{
+                    customerName: "",
+                    productId: "",
+                    quantity: 1,
+                    amount: 0,
+                    cashierName: "",
+                    saleDate: new Date().toISOString().split('T')[0],
+                    createdBy: "",
+                }}
+                onSubmit={handleSalesTransactionSubmit}
+                onSuccess={handleSalesTransactionSuccess}
+                title="Create Sales Transaction"
+                submitLabel="Create Transaction"
+                computedFields={computeSalesTransactionFields}
+                twoColumn={true}
             />
         </div>
     );

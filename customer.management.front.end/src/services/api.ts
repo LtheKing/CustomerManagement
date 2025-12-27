@@ -9,7 +9,11 @@ import {
   CashFlowResponse,
   SeedDataResponse,
   TestConnectionResponse,
-  Expense
+  Expense,
+  CreateSalesTransactionRequest,
+  SalesTransactionResponse,
+  Customer,
+  Product
 } from '../types';
 
 const API_BASE_URL =
@@ -228,6 +232,85 @@ class ApiService {
       return this.fetchData<Expense[]>('/expenses');
     } catch (error) {
       console.warn('Expenses endpoint not available');
+      return [];
+    }
+  }
+
+  // Sales Transaction endpoints
+  async createSalesTransaction(request: CreateSalesTransactionRequest): Promise<SalesTransactionResponse> {
+    // Convert camelCase to PascalCase to match backend model
+    // Support hybrid approach: CustomerId OR CustomerName
+    const requestBody: any = {
+      ProductId: request.productId,
+      Quantity: request.quantity,
+      Amount: request.amount,
+      CashierName: request.cashierName || "",
+      CreatedBy: request.createdBy,
+    };
+
+    // Add CustomerId if provided, otherwise add CustomerName
+    if (request.customerId) {
+      requestBody.CustomerId = request.customerId;
+    } else if (request.customerName) {
+      requestBody.CustomerName = request.customerName;
+    }
+
+    // Add SaleDate if provided
+    if (request.saleDate) {
+      requestBody.SaleDate = request.saleDate;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/Sales`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // If not JSON, use the text as error message
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    // Convert PascalCase response back to camelCase
+    return {
+      id: result.Id || result.id,
+      customerId: result.CustomerId || result.customerId,
+      productId: result.ProductId || result.productId,
+      quantity: result.Quantity || result.quantity,
+      amount: result.Amount || result.amount,
+      cashierName: result.CashierName || result.cashierName,
+      saleDate: result.SaleDate || result.saleDate,
+      createdBy: result.CreatedBy || result.createdBy,
+    };
+  }
+
+  // Product endpoints
+  async getProducts(activeOnly: boolean = false): Promise<Product[]> {
+    try {
+      const endpoint = activeOnly ? '/Product?activeOnly=true' : '/Product';
+      const result = await this.fetchData<any[]>(endpoint);
+      
+      // Convert PascalCase response to camelCase
+      return result.map((product: any) => ({
+        id: product.Id || product.id,
+        name: product.Name || product.name,
+        price: product.Price || product.price,
+      }));
+    } catch (error) {
+      console.warn('Products endpoint not available', error);
       return [];
     }
   }

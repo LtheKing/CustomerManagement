@@ -98,6 +98,8 @@ builder.Services.AddDbContext<CustomerManagementDbContext>(options =>
 // Add Services
 builder.Services.AddScoped<DataSeedingService>();
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
 
 var app = builder.Build();
 

@@ -4,7 +4,7 @@ import "../assets/components-styles/GenericForm.css";
 export interface FormField {
   name: string;
   label: string;
-  type: "text" | "number" | "email" | "tel" | "select" | "date" | "textarea" | "password";
+  type: "text" | "number" | "email" | "tel" | "select" | "date" | "textarea" | "password" | "combobox";
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -36,6 +36,11 @@ export interface GenericFormProps<T extends Record<string, any>> {
   // Modal control
   isOpen: boolean;
   onClose: () => void;
+  
+  // Advanced features
+  onFieldChange?: (fieldName: string, value: any, formData: Record<string, any>) => void;
+  computedFields?: (formData: Record<string, any>) => Record<string, any>;
+  twoColumn?: boolean; // Enable two-column layout
 }
 
 export function GenericForm<T extends Record<string, any>>({
@@ -50,6 +55,9 @@ export function GenericForm<T extends Record<string, any>>({
   title,
   isOpen,
   onClose,
+  onFieldChange,
+  computedFields,
+  twoColumn = false,
 }: GenericFormProps<T>) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,19 +66,24 @@ export function GenericForm<T extends Record<string, any>>({
 
   // Initialize form data from initialValues
   useEffect(() => {
+    let initial: Record<string, any> = {};
     if (initialValues) {
-      const initial: Record<string, any> = {};
       fields.forEach((field) => {
         initial[field.name] = initialValues[field.name] ?? "";
       });
-      setFormData(initial);
     } else {
-      const empty: Record<string, any> = {};
       fields.forEach((field) => {
-        empty[field.name] = "";
+        initial[field.name] = "";
       });
-      setFormData(empty);
     }
+    
+    // Apply computed fields if provided
+    if (computedFields) {
+      const computed = computedFields(initial);
+      initial = { ...initial, ...computed };
+    }
+    
+    setFormData(initial);
     setErrors({});
     setSubmitError(null);
   }, [initialValues, isOpen, fields]);
@@ -126,7 +139,21 @@ export function GenericForm<T extends Record<string, any>>({
   };
 
   const handleChange = (name: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const updatedData = { ...formData, [name]: value };
+    
+    // Apply computed fields if provided
+    let finalData = updatedData;
+    if (computedFields) {
+      const computed = computedFields(updatedData);
+      finalData = { ...updatedData, ...computed };
+    }
+    
+    setFormData(finalData);
+    
+    // Call onFieldChange callback if provided
+    if (onFieldChange) {
+      onFieldChange(name, value, finalData);
+    }
     
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -185,7 +212,7 @@ export function GenericForm<T extends Record<string, any>>({
 
   return (
     <div className="modal-overlay" onClick={handleCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-content ${twoColumn ? 'wide' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{formTitle}</h2>
           <button className="modal-close" onClick={handleCancel} aria-label="Close">
@@ -193,14 +220,14 @@ export function GenericForm<T extends Record<string, any>>({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="generic-form">
+        <form onSubmit={handleSubmit} className={`generic-form ${twoColumn ? 'compact' : ''}`}>
           {submitError && (
             <div className="form-error-message">
               {submitError}
             </div>
           )}
 
-          <div className="form-fields">
+          <div className={`form-fields ${twoColumn ? 'two-column' : ''}`}>
             {fields.map((field) => (
               <div key={field.name} className="form-field">
                 <label htmlFor={field.name}>
@@ -225,6 +252,28 @@ export function GenericForm<T extends Record<string, any>>({
                       </option>
                     ))}
                   </select>
+                ) : field.type === "combobox" ? (
+                  <div className="combobox-container">
+                    <input
+                      type="text"
+                      id={field.name}
+                      name={field.name}
+                      list={`${field.name}-options`}
+                      value={formData[field.name] || ""}
+                      onChange={(e) => handleChange(field.name, e.target.value)}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      disabled={field.disabled || isSubmitting}
+                      className={errors[field.name] ? "error" : ""}
+                    />
+                    {field.options && field.options.length > 0 && (
+                      <datalist id={`${field.name}-options`}>
+                        {field.options.map((option) => (
+                          <option key={option.value} value={option.label} />
+                        ))}
+                      </datalist>
+                    )}
+                  </div>
                 ) : field.type === "textarea" ? (
                   <textarea
                     id={field.name}
@@ -242,7 +291,9 @@ export function GenericForm<T extends Record<string, any>>({
                     type={field.type}
                     id={field.name}
                     name={field.name}
-                    value={formData[field.name] || ""}
+                    value={field.type === "number" 
+                      ? (formData[field.name] ?? (formData[field.name] === 0 ? 0 : ""))
+                      : (formData[field.name] || "")}
                     onChange={(e) => {
                       const value = field.type === "number" 
                         ? (e.target.value === "" ? "" : Number(e.target.value))
