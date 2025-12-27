@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using customer.management.data.entity.DbContext;
 using customer.management.api.Services;
+using customer.management.api.Interfaces;
 using System.Linq;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Npgsql;
@@ -94,8 +95,9 @@ builder.Services.AddDbContext<CustomerManagementDbContext>(options =>
     }
 });
 
-// Add Data Seeding Service
+// Add Services
 builder.Services.AddScoped<DataSeedingService>();
+builder.Services.AddScoped<ICashFlowService, CashFlowService>();
 
 var app = builder.Build();
 

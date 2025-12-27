@@ -3,8 +3,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace customer.management.data.entity.Models
 {
-    // Created via SQL: CREATE TABLE CapitalCash (...)  -- unquoted => table name is lowercase in PostgreSQL
-    [Table("capitalcash")]
+    // Table name must match exactly what's in the database
+    // If table is "CapitalCash" (PascalCase, quoted), use [Table("CapitalCash")]
+    // If table is "capitalcash" (lowercase, unquoted), use [Table("capitalcash")]
+    [Table("CapitalCash")]
     public class CapitalCashModelEntity
     {
         [Key]

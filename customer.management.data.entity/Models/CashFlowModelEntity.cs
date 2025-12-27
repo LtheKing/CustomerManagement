@@ -10,7 +10,11 @@ namespace customer.management.data.entity.Models
         [Key]
         public Guid Id { get; set; }
 
-        // SALE, EXPENSE, OWNER_TAKE
+        // Flow types: SALES, EXPENSE, ADJUSTMENT_IN, ADJUSTMENT_OUT
+        // SALES: positive (adds to capital)
+        // EXPENSE: negative (subtracts from capital)
+        // ADJUSTMENT_IN: positive (adds to capital)
+        // ADJUSTMENT_OUT: negative (subtracts from capital)
         [Required]
         [MaxLength(20)]
         public string FlowType { get; set; } = null!;

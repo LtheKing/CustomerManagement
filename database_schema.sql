@@ -213,7 +213,7 @@ CREATE INDEX IF NOT EXISTS ix_salesallocation_salestransactionid ON salesallocat
 
 CREATE TABLE CashFlow (
     Id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    FlowType VARCHAR(20) NOT NULL, -- SALE, EXPENSE, OWNER_TAKE
+    FlowType VARCHAR(20) NOT NULL, -- SALES, EXPENSE, ADJUSTMENT_IN, ADJUSTMENT_OUT
     ReferenceId UUID NOT NULL,
     Amount NUMERIC(18,2) NOT NULL,
     FlowDate TIMESTAMPTZ NOT NULL DEFAULT NOW()

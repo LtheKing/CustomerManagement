@@ -212,11 +212,11 @@ ON CONFLICT (id) DO NOTHING;
 -- 10. CASH FLOW (References Sales / Expenses / Owner Take)
 -- =====================================================
 INSERT INTO cashflow (id, flowtype, referenceid, amount, flowdate) VALUES
-('88888888-8888-8888-8888-888888888881', 'SALE', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 1499.95, NOW() - INTERVAL '10 days'),
-('88888888-8888-8888-8888-888888888882', 'SALE', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 1799.97, NOW() - INTERVAL '9 days'),
+('88888888-8888-8888-8888-888888888881', 'SALES', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 1499.95, NOW() - INTERVAL '10 days'),
+('88888888-8888-8888-8888-888888888882', 'SALES', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 1799.97, NOW() - INTERVAL '9 days'),
 ('88888888-8888-8888-8888-888888888883', 'EXPENSE', '66666666-6666-6666-6666-666666666661', 1200.00, NOW() - INTERVAL '10 days'),
 ('88888888-8888-8888-8888-888888888884', 'EXPENSE', '66666666-6666-6666-6666-666666666663', 450.00, NOW() - INTERVAL '5 days'),
-('88888888-8888-8888-8888-888888888885', 'OWNER_TAKE', '77777777-7777-7777-7777-777777777771', 199.95, NOW() - INTERVAL '9 days')
+('88888888-8888-8888-8888-888888888885', 'ADJUSTMENT_OUT', '77777777-7777-7777-7777-777777777771', 199.95, NOW() - INTERVAL '9 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================

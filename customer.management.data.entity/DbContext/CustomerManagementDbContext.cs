@@ -124,7 +124,9 @@ namespace customer.management.data.entity.DbContext
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.Balance).HasColumnType("numeric(18,2)");
-                entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // Configure Expenses entity (table created as unquoted Expenses => lowercase in PG)

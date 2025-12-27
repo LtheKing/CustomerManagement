@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
 import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
+import { Cashier } from "./Cashier";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -290,20 +291,7 @@ export const Dashboard = () => {
               </div>
             </div>
           ) : activeTab === "cashier" ? (
-            <div className="dashboard-content">
-              <div className="dashboard-header">
-                <h1>Cashier</h1>
-                <p>Record transactions quickly (UI stub for now).</p>
-              </div>
-
-              <div className="table-container">
-                <h3>Point of Sale</h3>
-                <p>
-                  This screen is ready to be wired up to a sales/transaction API. Add product scan/search,
-                  customer selection, and checkout here.
-                </p>
-              </div>
-            </div>
+            <Cashier />
           ) : null}
         </div>
       </div>

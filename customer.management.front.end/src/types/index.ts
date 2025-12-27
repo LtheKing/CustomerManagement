@@ -5,3 +5,7 @@ export * from "./models/Customer";
 export * from "./models/Sale";
 export * from "./models/CustomerTraffic";
 export * from "./models/User";
+export * from "./models/CapitalCash";
+export * from "./models/CashFlow";
+export * from "./models/Expense";
+export * from "./models/requests";
