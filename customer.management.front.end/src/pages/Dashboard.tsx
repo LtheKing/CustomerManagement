@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
 import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
+import { Cashier } from "./Cashier";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -165,6 +166,9 @@ export const Dashboard = () => {
           <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => setActiveTab("customers")}>
             👥 Customers
           </div>
+            <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => setActiveTab("cashier")}>
+              🧾 Cashier
+            </div>
           <div className="nav-item">
             📈 Analytics
           </div>
@@ -286,6 +290,8 @@ export const Dashboard = () => {
                 <CustomerTable customers={customers} />
               </div>
             </div>
+          ) : activeTab === "cashier" ? (
+            <Cashier />
           ) : null}
         </div>
       </div>

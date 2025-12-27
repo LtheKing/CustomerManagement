@@ -27,7 +27,8 @@ export const sortCustomersByName = (customers: Customer[]): Customer[] => {
 };
 
 export const filterCustomersByEmail = (customers: Customer[], email: string): Customer[] => {
+  const lowerEmail = email.toLowerCase();
   return customers.filter(customer => 
-    customer.email.toLowerCase().includes(email.toLowerCase())
+    customer.email?.toLowerCase()?.includes(lowerEmail) ?? false
   );
 };
