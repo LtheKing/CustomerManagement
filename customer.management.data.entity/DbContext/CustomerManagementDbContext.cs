@@ -154,9 +154,10 @@ namespace customer.management.data.entity.DbContext
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure CashFlow entity (table created as unquoted CashFlow => lowercase in PG)
+            // Configure CashFlow entity (table name is CashFlow in PascalCase)
             modelBuilder.Entity<CashFlowModelEntity>(entity =>
             {
+                entity.ToTable("CashFlow"); // Table name is PascalCase in the database
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");

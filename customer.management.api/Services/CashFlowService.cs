@@ -117,6 +117,47 @@ namespace customer.management.api.Services
                 UpdatedAt = latestCashFlow.FlowDate
             };
         }
+
+        /// <summary>
+        /// Create a new CashFlow entry
+        /// </summary>
+        public async Task<CashFlowDto> CreateCashFlowAsync(CreateCashFlowDto createDto)
+        {
+            // Validate flow type
+            var validFlowTypes = new[] { "SALES", "EXPENSE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT" };
+            var flowTypeUpper = createDto.FlowType.ToUpper();
+            
+            if (!validFlowTypes.Contains(flowTypeUpper))
+            {
+                throw new ArgumentException($"Invalid FlowType. Must be one of: {string.Join(", ", validFlowTypes)}");
+            }
+
+            // Create new CashFlow entity
+            var cashFlow = new CashFlowModelEntity
+            {
+                Id = Guid.NewGuid(),
+                FlowType = flowTypeUpper, // Store as uppercase for consistency
+                ReferenceId = createDto.ReferenceId,
+                Amount = createDto.Amount,
+                FlowDate = createDto.FlowDate ?? DateTimeOffset.UtcNow,
+                Info = createDto.Info
+            };
+
+            // Add to context and save
+            _context.CashFlows.Add(cashFlow);
+            await _context.SaveChangesAsync();
+
+            // Return as DTO
+            return new CashFlowDto
+            {
+                Id = cashFlow.Id,
+                FlowType = cashFlow.FlowType,
+                ReferenceId = cashFlow.ReferenceId,
+                Amount = cashFlow.Amount,
+                FlowDate = cashFlow.FlowDate,
+                Info = cashFlow.Info
+            };
+        }
     }
 }
 

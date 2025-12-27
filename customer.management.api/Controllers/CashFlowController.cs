@@ -38,6 +38,25 @@ namespace customer.management.api.Controllers
             var result = await _cashFlowService.GetLatestCapitalCashBalanceAsync();
             return Ok(result);
         }
+
+        // POST: api/cashflow
+        [HttpPost]
+        public async Task<ActionResult<CashFlowDto>> CreateCashFlow(CreateCashFlowDto createDto)
+        {
+            try
+            {
+                var result = await _cashFlowService.CreateCashFlowAsync(createDto);
+                return CreatedAtAction(nameof(GetCapitalCash), new { id = result.Id }, result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while creating the cash flow", details = ex.Message });
+            }
+        }
     }
 }
 

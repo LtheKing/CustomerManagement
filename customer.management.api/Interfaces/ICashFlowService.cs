@@ -10,6 +10,7 @@ namespace customer.management.api.Interfaces
         Task<IEnumerable<CapitalCashBalanceDto>> GetCapitalCashBalanceAsync();
         Task<CapitalCashBalanceDto> GetCapitalCashBalanceByIdAsync(Guid id);
         Task<CapitalCashBalanceDto> GetLatestCapitalCashBalanceAsync();
+        Task<CashFlowDto> CreateCashFlowAsync(CreateCashFlowDto createDto);
     }
 }
 
