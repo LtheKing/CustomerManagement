@@ -17,22 +17,31 @@ namespace customer.management.api.Controllers
 
         // GET: api/sales
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SalesDto>>> GetSales(
-            [FromQuery] Guid? customerId = null,
-            [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+        public async Task<ActionResult> GetSales([FromQuery] GetSalesPagedRequest request)
         {
             try
             {
+                // If pagination parameters are explicitly provided (not default values), use paginated endpoint
+                // Check if any query parameter was provided by checking if page or pageSize differ from defaults
+                // Since model binding will set defaults, we check if they were explicitly set via query params
+                var hasPaginationParams = Request.Query.ContainsKey("page") || Request.Query.ContainsKey("pageSize");
+                
+                if (hasPaginationParams)
+                {
+                    var pagedResult = await _salesService.GetSalesPagedAsync(request);
+                    return Ok(pagedResult);
+                }
+
+                // Otherwise, use non-paginated endpoints for backward compatibility
                 IEnumerable<SalesDto> result;
 
-                if (customerId.HasValue)
+                if (request.CustomerId.HasValue)
                 {
-                    result = await _salesService.GetSalesByCustomerIdAsync(customerId.Value);
+                    result = await _salesService.GetSalesByCustomerIdAsync(request.CustomerId.Value);
                 }
-                else if (startDate.HasValue && endDate.HasValue)
+                else if (request.StartDate.HasValue && request.EndDate.HasValue)
                 {
-                    result = await _salesService.GetSalesByDateRangeAsync(startDate.Value, endDate.Value);
+                    result = await _salesService.GetSalesByDateRangeAsync(request.StartDate.Value, request.EndDate.Value);
                 }
                 else
                 {

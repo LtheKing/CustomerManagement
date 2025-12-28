@@ -13,7 +13,9 @@ import {
   CreateSalesTransactionRequest,
   SalesTransactionResponse,
   Customer,
-  Product
+  Product,
+  Sales,
+  PagedResult
 } from '../types';
 
 const API_BASE_URL =
@@ -237,6 +239,83 @@ class ApiService {
   }
 
   // Sales Transaction endpoints
+  async getSalesTransactions(
+    page: number = 1,
+    pageSize: number = 20,
+    startDate?: string,
+    endDate?: string,
+    customerId?: string,
+    productId?: string,
+    cashierName?: string
+  ): Promise<PagedResult<Sales>> {
+    try {
+      let endpoint = '/Sales';
+      const params: string[] = [];
+      
+      // Add pagination parameters
+      params.push(`page=${page}`);
+      params.push(`pageSize=${pageSize}`);
+      
+      // Add filter parameters
+      if (startDate) {
+        params.push(`startDate=${encodeURIComponent(startDate)}`);
+      }
+      if (endDate) {
+        params.push(`endDate=${encodeURIComponent(endDate)}`);
+      }
+      if (customerId) {
+        params.push(`customerId=${encodeURIComponent(customerId)}`);
+      }
+      if (productId) {
+        params.push(`productId=${encodeURIComponent(productId)}`);
+      }
+      if (cashierName) {
+        params.push(`cashierName=${encodeURIComponent(cashierName)}`);
+      }
+      
+      if (params.length > 0) {
+        endpoint += `?${params.join('&')}`;
+      }
+      
+      const result = await this.fetchData<any>(endpoint);
+      
+      // Convert PascalCase response to camelCase
+      return {
+        data: (result.Data || result.data || []).map((sale: any) => ({
+          id: sale.Id || sale.id,
+          customerId: sale.CustomerId || sale.customerId,
+          customerName: sale.CustomerName || sale.customerName,
+          productId: sale.ProductId || sale.productId,
+          productName: sale.ProductName || sale.productName,
+          quantity: sale.Quantity || sale.quantity,
+          amount: sale.Amount || sale.amount,
+          cashierName: sale.CashierName || sale.cashierName,
+          saleDate: sale.SaleDate || sale.saleDate,
+          createdBy: sale.CreatedBy || sale.createdBy,
+          createdByUsername: sale.CreatedByUsername || sale.createdByUsername,
+        })),
+        totalCount: result.TotalCount || result.totalCount || 0,
+        page: result.Page || result.page || 1,
+        pageSize: result.PageSize || result.pageSize || 20,
+        totalPages: result.TotalPages || result.totalPages || 0,
+        hasPreviousPage: result.HasPreviousPage ?? result.hasPreviousPage ?? false,
+        hasNextPage: result.HasNextPage ?? result.hasNextPage ?? false,
+      };
+    } catch (error) {
+      console.warn('Sales transactions endpoint not available', error);
+      // Return empty paginated result on error
+      return {
+        data: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      };
+    }
+  }
+
   async createSalesTransaction(request: CreateSalesTransactionRequest): Promise<SalesTransactionResponse> {
     // Convert camelCase to PascalCase to match backend model
     // Support hybrid approach: CustomerId OR CustomerName

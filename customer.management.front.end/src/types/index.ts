@@ -9,4 +9,6 @@ export * from "./models/CapitalCash";
 export * from "./models/CashFlow";
 export * from "./models/Expense";
 export * from "./models/Product";
+export * from "./models/Sales";
+export * from "./models/PagedResult";
 export * from "./models/requests";

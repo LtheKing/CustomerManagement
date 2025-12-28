@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { apiService } from "../services/api";
-import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
+import { Customer, DashboardStats, SalesData, LoadingState, Product, PagedResult } from "../types";
+import type { Sales as SalesType } from "../types";
 import "../assets/page-styles/Dashboard.css";
+import "../assets/page-styles/Sales.css";
 
 const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
   const maxValue = Math.max(...data.map(d => d.sales));
@@ -24,7 +27,407 @@ const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
   );
 };
 
+const AnalyticTab = ({ customers, dashboardStats, salesData }: { customers: Customer[]; dashboardStats: DashboardStats | null; salesData: SalesData[] }) => {
+  return (
+    <div className="sales-grid">
+      <div className="sales-chart">
+        <SimpleChart data={salesData} title="Monthly Sales Performance" />
+      </div>
+      <div className="customer-insights">
+        <h3>Customer Insights</h3>
+        <div className="insight-cards">
+          <div className="insight-card">
+            <h4>Top Customer</h4>
+            <p>{customers.length > 0 ? customers.reduce((top, customer) => {
+              const customerTotal = customer.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
+              const topTotal = top.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
+              return customerTotal > topTotal ? customer : top;
+            }).name : "N/A"}</p>
+            <span>${customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString() : "0"}</span>
+          </div>
+          <div className="insight-card">
+            <h4>Total Orders</h4>
+            <p>{customers.reduce((sum, customer) => sum + (customer.sales?.length || 0), 0)}</p>
+            <span>All time</span>
+          </div>
+          <div className="insight-card">
+            <h4>Active Rate</h4>
+            <p>{dashboardStats ? Math.round((dashboardStats.activeCustomers / dashboardStats.totalCustomers) * 100) : 0}%</p>
+            <span>Last 30 days</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReportTab = () => {
+  const [pagedResult, setPagedResult] = useState<PagedResult<SalesType>>({
+    data: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 20,
+    totalPages: 0,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cashierNames, setCashierNames] = useState<string[]>([]);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
+  // Filter states
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [selectedCashier, setSelectedCashier] = useState<string>("");
+
+  const fetchSalesTransactions = async (page: number = currentPage) => {
+    try {
+      setLoading(true);
+      const result = await apiService.getSalesTransactions(
+        page,
+        pageSize,
+        startDate || undefined,
+        endDate || undefined,
+        selectedCustomerId || undefined,
+        selectedProductId || undefined,
+        selectedCashier || undefined
+      );
+      setPagedResult(result);
+      
+      // Extract unique cashier names from current page (limited, but better than nothing)
+      // For better UX, we could fetch all cashier names separately
+      const uniqueCashiers = Array.from(
+        new Set(result.data.map(s => s.cashierName).filter(Boolean))
+      ).sort() as string[];
+      if (uniqueCashiers.length > 0) {
+        setCashierNames(prev => {
+          const combined = [...new Set([...prev, ...uniqueCashiers])].sort();
+          return combined;
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching sales transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomersAndProducts = async () => {
+    try {
+      const [customersData, productsData] = await Promise.all([
+        apiService.getCustomers(),
+        apiService.getProducts()
+      ]);
+      setCustomers(customersData);
+      setProducts(productsData);
+    } catch (error) {
+      console.error('Error fetching customers/products:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomersAndProducts();
+  }, []);
+
+  // Fetch data when filters or pagination changes
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchSalesTransactions(1); // Reset to page 1 when filters change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, selectedCustomerId, selectedProductId, selectedCashier, pageSize]);
+
+  // Fetch data when page changes
+  useEffect(() => {
+    fetchSalesTransactions(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
+  const handleFilter = () => {
+    setCurrentPage(1);
+    fetchSalesTransactions(1);
+  };
+
+  const handleClearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setSelectedCustomerId("");
+    setSelectedProductId("");
+    setSelectedCashier("");
+  };
+
+  const handleExportToExcel = async () => {
+    if (pagedResult.data.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    try {
+      // Fetch all data matching current filters (without pagination)
+      // We'll fetch with a large page size to get all results
+      const allData: SalesType[] = [];
+      let currentPage = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const result = await apiService.getSalesTransactions(
+          currentPage,
+          1000, // Large page size to minimize requests
+          startDate || undefined,
+          endDate || undefined,
+          selectedCustomerId || undefined,
+          selectedProductId || undefined,
+          selectedCashier || undefined
+        );
+        
+        allData.push(...result.data);
+        hasMore = result.hasNextPage;
+        currentPage++;
+      }
+
+      // Prepare data for Excel export
+      const exportData = allData.map(transaction => ({
+        "Date": formatDate(transaction.saleDate),
+        "Customer": transaction.customerName,
+        "Product": transaction.productName,
+        "Quantity": transaction.quantity,
+        "Amount": transaction.amount,
+        "Cashier": transaction.cashierName || "N/A"
+      }));
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
+
+      // Generate filename with current date
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const filename = `Sales_Report_${dateStr}.xlsx`;
+
+      // Write file and trigger download
+      XLSX.writeFile(workbook, filename);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert("Failed to export data. Please try again.");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  return (
+    <div className="sales-report-container">
+      <div className="sales-report-filters">
+        <div className="filter-group">
+          <label htmlFor="startDate">Start Date</label>
+          <input
+            type="date"
+            id="startDate"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </div>
+        <div className="filter-group">
+          <label htmlFor="endDate">End Date</label>
+          <input
+            type="date"
+            id="endDate"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <div className="filter-group">
+          <label htmlFor="customer">Customer</label>
+          <select
+            id="customer"
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+          >
+            <option value="">All Customers</option>
+            {customers.map(customer => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="filter-group">
+          <label htmlFor="product">Product</label>
+          <select
+            id="product"
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
+          >
+            <option value="">All Products</option>
+            {products.map(product => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="filter-group">
+          <label htmlFor="cashier">Cashier</label>
+          <select
+            id="cashier"
+            value={selectedCashier}
+            onChange={(e) => setSelectedCashier(e.target.value)}
+          >
+            <option value="">All Cashiers</option>
+            {cashierNames.map(cashier => (
+              <option key={cashier} value={cashier}>
+                {cashier}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button onClick={handleFilter} disabled={loading}>
+          {loading ? "Loading..." : "Refresh"}
+        </button>
+        <button onClick={handleClearFilters} className="clear-filters-btn">
+          Clear Filters
+        </button>
+        <button 
+          onClick={handleExportToExcel} 
+          disabled={pagedResult.data.length === 0}
+          className="export-excel-btn"
+        >
+          📊 Export to Excel
+        </button>
+        <div className="filter-group">
+          <label htmlFor="pageSize">Page Size</label>
+          <select
+            id="pageSize"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner">⏳</div>
+          <p>Loading sales transactions...</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.875rem' }}>
+            Showing {pagedResult.data.length} of {pagedResult.totalCount} transactions
+            {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}
+          </div>
+          <table className="sales-report-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th className="text-center">Quantity</th>
+                <th className="text-right">Amount</th>
+                <th>Cashier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedResult.data.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    No sales transactions found
+                  </td>
+                </tr>
+              ) : (
+                pagedResult.data.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td>{formatDate(transaction.saleDate)}</td>
+                    <td>{transaction.customerName}</td>
+                    <td>{transaction.productName}</td>
+                    <td className="text-center">{transaction.quantity}</td>
+                    <td className="text-right">${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>{transaction.cashierName || "N/A"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          
+          {/* Pagination Controls */}
+          {pagedResult.totalPages > 1 && (
+            <div className="pagination-controls">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={!pagedResult.hasPreviousPage || loading}
+                className="pagination-btn"
+              >
+                Previous
+              </button>
+              
+              <div className="pagination-info">
+                {Array.from({ length: Math.min(5, pagedResult.totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (pagedResult.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (pagedResult.page <= 3) {
+                    pageNum = i + 1;
+                  } else if (pagedResult.page >= pagedResult.totalPages - 2) {
+                    pageNum = pagedResult.totalPages - 4 + i;
+                  } else {
+                    pageNum = pagedResult.page - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      disabled={loading}
+                      className={`pagination-btn ${pagedResult.page === pageNum ? 'active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(pagedResult.totalPages, prev + 1))}
+                disabled={!pagedResult.hasNextPage || loading}
+                className="pagination-btn"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 export const Sales = () => {
+  const [activeTab, setActiveTab] = useState<"analytic" | "report">("analytic");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [salesData, setSalesData] = useState<SalesData[]>([]);
@@ -88,35 +491,26 @@ export const Sales = () => {
         <p>Detailed sales performance and customer insights.</p>
       </div>
       
-      <div className="sales-grid">
-        <div className="sales-chart">
-          <SimpleChart data={salesData} title="Monthly Sales Performance" />
-        </div>
-        <div className="customer-insights">
-          <h3>Customer Insights</h3>
-          <div className="insight-cards">
-            <div className="insight-card">
-              <h4>Top Customer</h4>
-              <p>{customers.length > 0 ? customers.reduce((top, customer) => {
-                const customerTotal = customer.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                const topTotal = top.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                return customerTotal > topTotal ? customer : top;
-              }).name : "N/A"}</p>
-              <span>${customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString() : "0"}</span>
-            </div>
-            <div className="insight-card">
-              <h4>Total Orders</h4>
-              <p>{customers.reduce((sum, customer) => sum + (customer.sales?.length || 0), 0)}</p>
-              <span>All time</span>
-            </div>
-            <div className="insight-card">
-              <h4>Active Rate</h4>
-              <p>{dashboardStats ? Math.round((dashboardStats.activeCustomers / dashboardStats.totalCustomers) * 100) : 0}%</p>
-              <span>Last 30 days</span>
-            </div>
-          </div>
-        </div>
+      <div className="sales-tabs">
+        <button
+          className={`sales-tab ${activeTab === "analytic" ? "active" : ""}`}
+          onClick={() => setActiveTab("analytic")}
+        >
+          analytic
+        </button>
+        <button
+          className={`sales-tab ${activeTab === "report" ? "active" : ""}`}
+          onClick={() => setActiveTab("report")}
+        >
+          report
+        </button>
       </div>
+
+      {activeTab === "analytic" ? (
+        <AnalyticTab customers={customers} dashboardStats={dashboardStats} salesData={salesData} />
+      ) : (
+        <ReportTab />
+      )}
     </div>
   );
 };

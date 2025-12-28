@@ -84,6 +84,73 @@ namespace customer.management.api.Services
         }
 
         /// <summary>
+        /// Get paginated sales with optional filters
+        /// </summary>
+        public async Task<PagedResult<SalesDto>> GetSalesPagedAsync(GetSalesPagedRequest request)
+        {
+            // Validate pagination parameters
+            if (request.Page < 1) request.Page = 1;
+            if (request.PageSize < 1) request.PageSize = 20;
+            if (request.PageSize > 100) request.PageSize = 100; // Max page size limit
+
+            // Build query
+            var query = _context.Sales
+                .Include(s => s.Customer)
+                .Include(s => s.Product)
+                .Include(s => s.User)
+                .AsQueryable();
+
+            // Apply filters
+            if (request.CustomerId.HasValue)
+            {
+                query = query.Where(s => s.CustomerId == request.CustomerId.Value);
+            }
+
+            if (request.ProductId.HasValue)
+            {
+                query = query.Where(s => s.ProductId == request.ProductId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.CashierName))
+            {
+                query = query.Where(s => s.CashierName != null && s.CashierName == request.CashierName);
+            }
+
+            if (request.StartDate.HasValue)
+            {
+                query = query.Where(s => s.SaleDate >= request.StartDate.Value);
+            }
+
+            if (request.EndDate.HasValue)
+            {
+                // Include the entire end date (up to end of day)
+                var endDateTime = request.EndDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(s => s.SaleDate <= endDateTime);
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply ordering and pagination
+            var sales = await query
+                .OrderByDescending(s => s.SaleDate)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            // Map to DTOs
+            var data = sales.Select(s => MapToDto(s)).ToList();
+
+            return new PagedResult<SalesDto>
+            {
+                Data = data,
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+        }
+
+        /// <summary>
         /// Create a new sales transaction
         /// Hybrid approach: Either CustomerId OR CustomerName must be provided
         /// Also creates a corresponding CashFlow entry with FlowType "SALES"
