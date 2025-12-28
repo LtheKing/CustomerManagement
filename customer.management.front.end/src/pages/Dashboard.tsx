@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
 import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
 import { Cashier } from "./Cashier";
+import { Sales } from "./Sales";
+import { Customers } from "./Customers";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -243,53 +245,9 @@ export const Dashboard = () => {
               </div>
             </div>
           ) : activeTab === "sales" ? (
-            <div className="dashboard-content">
-              <div className="dashboard-header">
-                <h1>Sales Analytics</h1>
-                <p>Detailed sales performance and customer insights.</p>
-              </div>
-              
-              <div className="sales-grid">
-                <div className="sales-chart">
-                  <SimpleChart data={salesData} title="Monthly Sales Performance" />
-                </div>
-                <div className="customer-insights">
-                  <h3>Customer Insights</h3>
-                  <div className="insight-cards">
-                    <div className="insight-card">
-                      <h4>Top Customer</h4>
-                      <p>{customers.length > 0 ? customers.reduce((top, customer) => {
-                        const customerTotal = customer.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                        const topTotal = top.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                        return customerTotal > topTotal ? customer : top;
-                      }).name : "N/A"}</p>
-                      <span>${customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString() : "0"}</span>
-                    </div>
-                    <div className="insight-card">
-                      <h4>Total Orders</h4>
-                      <p>{customers.reduce((sum, customer) => sum + (customer.sales?.length || 0), 0)}</p>
-                      <span>All time</span>
-                    </div>
-                    <div className="insight-card">
-                      <h4>Active Rate</h4>
-                      <p>{dashboardStats ? Math.round((dashboardStats.activeCustomers / dashboardStats.totalCustomers) * 100) : 0}%</p>
-                      <span>Last 30 days</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Sales />
           ) : activeTab === "customers" ? (
-            <div className="dashboard-content">
-              <div className="dashboard-header">
-                <h1>Customer Management</h1>
-                <p>Manage your customer database and view detailed information.</p>
-              </div>
-              
-              <div className="customers-section">
-                <CustomerTable customers={customers} />
-              </div>
-            </div>
+            <Customers />
           ) : activeTab === "cashier" ? (
             <Cashier />
           ) : null}
