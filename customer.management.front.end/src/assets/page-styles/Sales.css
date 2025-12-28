@@ -139,6 +139,14 @@
     opacity: 0.6;
 }
 
+.sales-report-filters .refresh-btn {
+    background-color: #6366f1;
+}
+
+.sales-report-filters .refresh-btn:hover {
+    background-color: #4f46e5;
+}
+
 .sales-report-table {
     width: 100%;
     border-collapse: collapse;

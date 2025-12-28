@@ -118,7 +118,6 @@ namespace customer.management.data.entity.DbContext
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Configure CapitalCash entity (table created as unquoted CapitalCash => lowercase in PG)
             modelBuilder.Entity<CapitalCashModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -129,16 +128,15 @@ namespace customer.management.data.entity.DbContext
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            // Configure Expenses entity (table created as unquoted Expenses => lowercase in PG)
             modelBuilder.Entity<ExpenseModelEntity>(entity =>
             {
+                entity.ToTable("Expenses");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.ExpenseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            // Configure SalesAllocation entity (table created as unquoted SalesAllocation => lowercase in PG)
             modelBuilder.Entity<SalesAllocationModelEntity>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -154,10 +152,9 @@ namespace customer.management.data.entity.DbContext
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure CashFlow entity (table name is CashFlow in PascalCase)
             modelBuilder.Entity<CashFlowModelEntity>(entity =>
             {
-                entity.ToTable("CashFlow"); // Table name is PascalCase in the database
+                entity.ToTable("CashFlow");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");

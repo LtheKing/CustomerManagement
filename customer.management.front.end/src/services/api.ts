@@ -238,6 +238,117 @@ class ApiService {
     }
   }
 
+  // Paginated Expense endpoints
+  async getExpensesPaged(
+    page: number = 1,
+    pageSize: number = 20,
+    startDate?: string,
+    endDate?: string,
+    description?: string,
+    minAmount?: number,
+    maxAmount?: number
+  ): Promise<PagedResult<Expense>> {
+    try {
+      let endpoint = '/Expense';
+      const params: string[] = [];
+      
+      // Add pagination parameters
+      params.push(`page=${page}`);
+      params.push(`pageSize=${pageSize}`);
+      
+      // Add filter parameters
+      if (startDate) {
+        params.push(`startDate=${encodeURIComponent(startDate)}`);
+      }
+      if (endDate) {
+        params.push(`endDate=${encodeURIComponent(endDate)}`);
+      }
+      if (description) {
+        params.push(`description=${encodeURIComponent(description)}`);
+      }
+      if (minAmount !== undefined) {
+        params.push(`minAmount=${minAmount}`);
+      }
+      if (maxAmount !== undefined) {
+        params.push(`maxAmount=${maxAmount}`);
+      }
+      
+      if (params.length > 0) {
+        endpoint += `?${params.join('&')}`;
+      }
+      
+      const result = await this.fetchData<any>(endpoint);
+      
+      // Convert PascalCase response to camelCase
+      return {
+        data: (result.Data || result.data || []).map((expense: any) => ({
+          id: expense.Id || expense.id,
+          description: expense.Description || expense.description,
+          amount: expense.Amount || expense.amount,
+          expenseDate: expense.ExpenseDate || expense.expenseDate,
+        })),
+        totalCount: result.TotalCount || result.totalCount || 0,
+        page: result.Page || result.page || 1,
+        pageSize: result.PageSize || result.pageSize || 20,
+        totalPages: result.TotalPages || result.totalPages || 0,
+        hasPreviousPage: result.HasPreviousPage ?? result.hasPreviousPage ?? false,
+        hasNextPage: result.HasNextPage ?? result.hasNextPage ?? false,
+      };
+    } catch (error) {
+      console.warn('Expenses paginated endpoint not available', error);
+      return {
+        data: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      };
+    }
+  }
+
+  async createExpense(description: string, amount: number, expenseDate?: string): Promise<any> {
+    const requestBody: any = {
+      Description: description,
+      Amount: amount,
+    };
+
+    if (expenseDate) {
+      requestBody.ExpenseDate = expenseDate;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/Expense`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return {
+      id: result.Id || result.id,
+      description: result.Description || result.description,
+      amount: result.Amount || result.amount,
+      expenseDate: result.ExpenseDate || result.expenseDate,
+    };
+  }
+
   // Sales Transaction endpoints
   async getSalesTransactions(
     page: number = 1,

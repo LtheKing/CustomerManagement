@@ -4,6 +4,7 @@ import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
 import { Cashier } from "./Cashier";
 import { Sales } from "./Sales";
 import { Customers } from "./Customers";
+import { Expense } from "./Expense";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -171,6 +172,9 @@ export const Dashboard = () => {
             <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => setActiveTab("cashier")}>
               🧾 Cashier
             </div>
+          <div className={`nav-item ${activeTab === "expense" ? "active" : ""}`} onClick={() => setActiveTab("expense")}>
+            💸 Expense
+          </div>
           <div className="nav-item">
             📈 Analytics
           </div>
@@ -250,6 +254,8 @@ export const Dashboard = () => {
             <Customers />
           ) : activeTab === "cashier" ? (
             <Cashier />
+          ) : activeTab === "expense" ? (
+            <Expense />
           ) : null}
         </div>
       </div>

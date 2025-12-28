@@ -87,8 +87,40 @@ const ReportTab = () => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedCashier, setSelectedCashier] = useState<string>("");
 
-  const fetchSalesTransactions = async (page: number = currentPage) => {
+  // Cache management: Store loaded pages by filter key and page number
+  const [pageCache, setPageCache] = useState<Map<string, PagedResult<SalesType>>>(new Map());
+  const [cacheTimestamp, setCacheTimestamp] = useState<number>(Date.now());
+  const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache expiry
+
+  // Generate cache key from current filters
+  const getCacheKey = (page: number): string => {
+    return `${page}-${pageSize}-${startDate}-${endDate}-${selectedCustomerId}-${selectedProductId}-${selectedCashier}`;
+  };
+
+  // Check if cache is valid (not expired)
+  const isCacheValid = (): boolean => {
+    return (Date.now() - cacheTimestamp) < CACHE_EXPIRY_MS;
+  };
+
+  // Clear cache (useful for refresh)
+  const clearCache = () => {
+    setPageCache(new Map());
+    setCacheTimestamp(Date.now());
+  };
+
+  const fetchSalesTransactions = async (page: number = currentPage, forceRefresh: boolean = false) => {
     try {
+      const cacheKey = getCacheKey(page);
+      
+      // Check cache first (if not forcing refresh and cache is valid)
+      if (!forceRefresh && isCacheValid()) {
+        const cached = pageCache.get(cacheKey);
+        if (cached) {
+          setPagedResult(cached);
+          return; // Use cached data
+        }
+      }
+
       setLoading(true);
       const result = await apiService.getSalesTransactions(
         page,
@@ -99,10 +131,18 @@ const ReportTab = () => {
         selectedProductId || undefined,
         selectedCashier || undefined
       );
+      
+      // Update cache
+      setPageCache(prev => {
+        const newCache = new Map(prev);
+        newCache.set(cacheKey, result);
+        return newCache;
+      });
+      setCacheTimestamp(Date.now());
+      
       setPagedResult(result);
       
-      // Extract unique cashier names from current page (limited, but better than nothing)
-      // For better UX, we could fetch all cashier names separately
+      // Extract unique cashier names from current page
       const uniqueCashiers = Array.from(
         new Set(result.data.map(s => s.cashierName).filter(Boolean))
       ).sort() as string[];
@@ -139,19 +179,26 @@ const ReportTab = () => {
   // Fetch data when filters or pagination changes
   useEffect(() => {
     setCurrentPage(1);
-    fetchSalesTransactions(1); // Reset to page 1 when filters change
+    clearCache(); // Clear cache when filters change
+    fetchSalesTransactions(1, true); // Force refresh when filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, selectedCustomerId, selectedProductId, selectedCashier, pageSize]);
 
-  // Fetch data when page changes
+  // Fetch data when page changes (use cache if available)
   useEffect(() => {
-    fetchSalesTransactions(currentPage);
+    fetchSalesTransactions(currentPage, false); // Use cache if available
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
   const handleFilter = () => {
     setCurrentPage(1);
-    fetchSalesTransactions(1);
+    clearCache(); // Clear cache on manual filter
+    fetchSalesTransactions(1, true);
+  };
+
+  const handleRefresh = () => {
+    clearCache(); // Clear cache on refresh
+    fetchSalesTransactions(currentPage, true);
   };
 
   const handleClearFilters = () => {
@@ -300,7 +347,10 @@ const ReportTab = () => {
           </select>
         </div>
         <button onClick={handleFilter} disabled={loading}>
-          {loading ? "Loading..." : "Refresh"}
+          {loading ? "Loading..." : "Apply Filters"}
+        </button>
+        <button onClick={handleRefresh} disabled={loading} className="refresh-btn" title="Refresh data (clears cache)">
+          🔄 Refresh
         </button>
         <button onClick={handleClearFilters} className="clear-filters-btn">
           Clear Filters
@@ -337,9 +387,16 @@ const ReportTab = () => {
         </div>
       ) : (
         <>
-          <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.875rem' }}>
-            Showing {pagedResult.data.length} of {pagedResult.totalCount} transactions
-            {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}
+          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
+              Showing {pagedResult.data.length} of {pagedResult.totalCount} transactions
+              {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}
+            </div>
+            {!isCacheValid() && (
+              <div style={{ color: '#f59e0b', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                Cache expired - data will refresh on next navigation
+              </div>
+            )}
           </div>
           <table className="sales-report-table">
             <thead>
