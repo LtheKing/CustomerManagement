@@ -61,10 +61,10 @@ export function CustomerFormExample() {
     setIsOpen(true);
   };
 
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setIsOpen(true);
-  };
+  // const handleEdit = (customer: Customer) => {
+  //   setEditingCustomer(customer);
+  //   setIsOpen(true);
+  // };
 
   const handleSubmit = async (data: Partial<Customer>) => {
     if (editingCustomer) {
