@@ -12,7 +12,6 @@ import {
   Expense,
   CreateSalesTransactionRequest,
   SalesTransactionResponse,
-  Customer,
   Product,
   Sales,
   PagedResult
