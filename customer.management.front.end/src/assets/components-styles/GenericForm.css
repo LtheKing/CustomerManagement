@@ -6,12 +6,37 @@
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  padding: 2rem 1rem;
+  animation: fadeIn 0.2s ease;
+  overflow-y: auto;
+  /* Ensure proper vertical centering */
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  /* Use flexbox for centering */
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  animation: fadeIn 0.2s ease;
+}
+
+/* Ensure modal content is centered when overlay scrolls - use pseudo-element trick */
+.modal-overlay::before {
+  content: '';
+  display: block;
+  min-height: calc(50vh - 2rem);
+  min-height: calc(50dvh - 2rem);
+  width: 1px;
+  order: -1;
+  flex-shrink: 0;
+}
+
+.modal-overlay::after {
+  content: '';
+  display: block;
+  min-height: calc(50vh - 2rem);
+  min-height: calc(50dvh - 2rem);
+  width: 1px;
+  flex-shrink: 0;
 }
 
 @keyframes fadeIn {
@@ -30,11 +55,21 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
+  max-height: calc(90vh - 4rem);
+  max-height: calc(90dvh - 4rem); /* Dynamic viewport height for mobile, accounting for padding */
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease;
   overflow: hidden;
+  /* Ensure modal is centered vertically */
+  margin: auto;
+  position: relative;
+  /* Better vertical centering when content is smaller */
+  align-self: center;
+  flex-shrink: 0;
+  /* Ensure it stays centered vertically */
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .modal-content.wide {

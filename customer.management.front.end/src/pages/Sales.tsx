@@ -387,49 +387,60 @@ const ReportTab = () => {
         </div>
       ) : (
         <>
-          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
-              Showing {pagedResult.data.length} of {pagedResult.totalCount} transactions
-              {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}
+          <div className="sales-report-info-bar">
+            <div className="sales-report-info-content">
+              <span className="sales-report-info-icon">📊</span>
+              <span>Showing <strong className="sales-report-info-strong">{pagedResult.data.length}</strong> of <strong className="sales-report-info-strong">{pagedResult.totalCount}</strong> transactions
+              {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}</span>
             </div>
             {!isCacheValid() && (
-              <div style={{ color: '#f59e0b', fontSize: '0.75rem', fontStyle: 'italic' }}>
-                Cache expired - data will refresh on next navigation
+              <div className="sales-report-cache-indicator">
+                <span>🔍</span>
+                <span>Cache expired - data will refresh on next navigation</span>
               </div>
             )}
           </div>
-          <table className="sales-report-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Product</th>
-                <th className="text-center">Quantity</th>
-                <th className="text-right">Amount</th>
-                <th>Cashier</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedResult.data.length === 0 ? (
+          <div className="sales-report-table-container">
+            <table className="sales-report-table sales-report-table-wrapper">
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                    No sales transactions found
-                  </td>
+                  <th className="sales-col-date">Date</th>
+                  <th className="sales-col-customer">Customer</th>
+                  <th className="sales-col-product">Product</th>
+                  <th className="text-center sales-col-quantity">Quantity</th>
+                  <th className="text-right sales-col-amount">Amount</th>
+                  <th className="sales-col-cashier">Cashier</th>
                 </tr>
-              ) : (
-                pagedResult.data.map((transaction) => (
-                  <tr key={transaction.id}>
-                    <td>{formatDate(transaction.saleDate)}</td>
-                    <td>{transaction.customerName}</td>
-                    <td>{transaction.productName}</td>
-                    <td className="text-center">{transaction.quantity}</td>
-                    <td className="text-right">IDR {transaction.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                    <td>{transaction.cashierName || "N/A"}</td>
+              </thead>
+              <tbody>
+                {pagedResult.data.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="sales-report-empty-state">
+                      <div className="sales-report-empty-state-content">
+                        <span className="sales-report-empty-state-icon">💰</span>
+                        <span>No sales transactions found</span>
+                      </div>
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  pagedResult.data.map((transaction) => (
+                    <tr key={transaction.id} className="sales-report-table-row">
+                      <td className="sales-cell-date">{formatDate(transaction.saleDate)}</td>
+                      <td className="sales-cell-customer">{transaction.customerName}</td>
+                      <td className="sales-cell-product">{transaction.productName}</td>
+                      <td className="text-center sales-cell-quantity">{transaction.quantity}</td>
+                      <td className="text-right sales-cell-amount">
+                        IDR {transaction.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </td>
+                      <td className={transaction.cashierName ? "sales-cell-cashier" : "sales-cell-cashier sales-cell-cashier-na"}>
+                        {transaction.cashierName || "N/A"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
           
           {/* Pagination Controls */}
           {pagedResult.totalPages > 1 && (

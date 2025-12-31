@@ -6,6 +6,7 @@ import { Product } from "../types";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 import "../assets/page-styles/Expense.css";
+import "../assets/page-styles/Product.css";
 
 export const ProductPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -367,83 +368,90 @@ export const ProductPage = () => {
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                Showing {filteredProducts.length} of {products.length} products
+            <div className="product-info-bar">
+              <div className="product-info-content">
+                <span className="product-info-icon">📊</span>
+                <span>Showing <strong className="product-info-strong">{filteredProducts.length}</strong> of <strong className="product-info-strong">{products.length}</strong> products</span>
               </div>
+              {filteredProducts.length !== products.length && (
+                <div className="product-filter-indicator">
+                  <span>🔍</span>
+                  <span>Filters applied</span>
+                </div>
+              )}
             </div>
-            <table className="sales-report-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>SKU</th>
-                  <th className="text-right">Price</th>
-                  <th className="text-right">Stock</th>
-                  <th>Status</th>
-                  <th>Created At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.length === 0 ? (
+            <div className="product-table-container">
+              <table className="sales-report-table product-table">
+                <thead>
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                      No products found
-                    </td>
+                    <th className="product-col-name">Name</th>
+                    <th className="product-col-sku">SKU</th>
+                    <th className="text-right product-col-price">Price</th>
+                    <th className="text-right product-col-stock">Stock</th>
+                    <th className="product-col-status">Status</th>
+                    <th className="product-col-created">Created At</th>
+                    <th className="product-col-actions">Actions</th>
                   </tr>
-                ) : (
-                  filteredProducts.map((product) => (
-                    <tr key={product.id}>
-                      <td>{product.name}</td>
-                      <td>{product.sku}</td>
-                      <td className="text-right">IDR {product.price.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                      <td className="text-right">{product.stock.toLocaleString()}</td>
-                      <td>
-                        <span style={{ 
-                          color: product.isActive ? '#10b981' : '#ef4444',
-                          fontWeight: '500'
-                        }}>
-                          {product.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td>{formatDate(product.createdAt)}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => handleEdit(product)}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              backgroundColor: '#3b82f6',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(product)}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              backgroundColor: '#ef4444',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Delete
-                          </button>
+                </thead>
+                <tbody>
+                  {filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="product-empty-state">
+                        <div className="product-empty-state-content">
+                          <span className="product-empty-state-icon">📦</span>
+                          <span>No products found</span>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <tr key={product.id} className="product-table-row">
+                        <td className="product-cell-name">{product.name}</td>
+                        <td className="product-cell-sku">{product.sku}</td>
+                        <td className="text-right product-cell-price">
+                          IDR {product.price.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                        <td className={`text-right product-cell-stock ${
+                          product.stock === 0 
+                            ? 'product-cell-stock-low' 
+                            : product.stock < 10 
+                            ? 'product-cell-stock-medium' 
+                            : 'product-cell-stock-high'
+                        }`}>
+                          {product.stock.toLocaleString('id-ID')}
+                        </td>
+                        <td>
+                          <span className={`product-status-badge ${
+                            product.isActive 
+                              ? 'product-status-badge-active' 
+                              : 'product-status-badge-inactive'
+                          }`}>
+                            {product.isActive ? '✓ Active' : '✗ Inactive'}
+                          </span>
+                        </td>
+                        <td className="product-cell-created">{formatDate(product.createdAt)}</td>
+                        <td>
+                          <div className="product-actions-container">
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="product-btn product-btn-edit"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product)}
+                              className="product-btn product-btn-delete"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>

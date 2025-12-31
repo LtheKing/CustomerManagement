@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
 import { Customer, LoadingState } from "../types";
 import "../assets/page-styles/Dashboard.css";
+import "../assets/page-styles/Customers.css";
 
 const CustomerTable = ({ customers }: { customers: Customer[] }) => {
   const getCustomerStatus = (customer: Customer): string => {
@@ -35,32 +36,62 @@ const CustomerTable = ({ customers }: { customers: Customer[] }) => {
   return (
     <div className="table-container">
       <h3>All Customers</h3>
-      <table className="customer-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Last Order</th>
-            <th>Total Spent</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email || "N/A"}</td>
-              <td>
-                <span className={`status ${getCustomerStatus(customer).toLowerCase().replace(" ", "-")}`}>
-                  {getCustomerStatus(customer)}
-                </span>
-              </td>
-              <td>{getLastOrderDate(customer)}</td>
-              <td>IDR {getTotalSpent(customer).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+      {customers.length > 0 && (
+        <div className="customer-info-bar">
+          <div className="customer-info-content">
+            <span className="customer-info-icon">👥</span>
+            <span>Showing <strong className="customer-info-strong">{customers.length}</strong> customers</span>
+          </div>
+        </div>
+      )}
+      <div className="customer-table-container-wrapper">
+        <table className="customer-table customer-table-wrapper">
+          <thead>
+            <tr>
+              <th className="customer-col-name">Name</th>
+              <th className="customer-col-email">Email</th>
+              <th className="customer-col-status">Status</th>
+              <th className="customer-col-last-order">Last Order</th>
+              <th className="customer-col-total-spent">Total Spent</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {customers.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="customer-empty-state">
+                  <div className="customer-empty-state-content">
+                    <span className="customer-empty-state-icon">👥</span>
+                    <span>No customers found</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              customers.map(customer => {
+                const status = getCustomerStatus(customer);
+                const statusClass = status.toLowerCase().replace(" ", "-");
+                
+                return (
+                  <tr key={customer.id} className="customer-table-row">
+                    <td className="customer-cell-name">{customer.name}</td>
+                    <td className={customer.email ? "customer-cell-email" : "customer-cell-email customer-cell-email-na"}>
+                      {customer.email || "N/A"}
+                    </td>
+                    <td>
+                      <span className={`customer-status-badge ${statusClass}`}>
+                        {status === "Active" ? "✓ " : status === "Inactive" ? "✗ " : ""}{status}
+                      </span>
+                    </td>
+                    <td className="customer-cell-last-order">{getLastOrderDate(customer)}</td>
+                    <td className="customer-cell-total-spent">
+                      IDR {getTotalSpent(customer).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

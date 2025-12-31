@@ -233,6 +233,148 @@
     border-color: #2563eb;
 }
 
+/* Sales Report Info Bar */
+.sales-report-info-bar {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.sales-report-info-content {
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sales-report-info-icon {
+    font-size: 1.1rem;
+}
+
+.sales-report-info-strong {
+    color: #1e293b;
+}
+
+.sales-report-cache-indicator {
+    color: #f59e0b;
+    font-size: 0.8125rem;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Sales Report Table Container */
+.sales-report-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.sales-report-table-wrapper {
+    margin: 0;
+}
+
+.sales-report-table-wrapper th {
+    min-width: 120px;
+}
+
+.sales-report-table-wrapper th.sales-col-date {
+    min-width: 180px;
+}
+
+.sales-report-table-wrapper th.sales-col-customer {
+    min-width: 150px;
+}
+
+.sales-report-table-wrapper th.sales-col-product {
+    min-width: 180px;
+}
+
+.sales-report-table-wrapper th.sales-col-quantity {
+    min-width: 100px;
+}
+
+.sales-report-table-wrapper th.sales-col-amount {
+    min-width: 130px;
+}
+
+.sales-report-table-wrapper th.sales-col-cashier {
+    min-width: 120px;
+}
+
+/* Sales Report Table Rows */
+.sales-report-table-row {
+    transition: background-color 0.2s ease;
+}
+
+/* Sales Report Table Cells */
+.sales-cell-date {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.sales-cell-customer {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.sales-cell-product {
+    color: #1e293b;
+}
+
+.sales-cell-quantity {
+    font-weight: 500;
+    color: #475569;
+}
+
+.sales-cell-amount {
+    font-weight: 600;
+    color: #059669;
+}
+
+.sales-cell-cashier {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.sales-cell-cashier-na {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Sales Report Empty State */
+.sales-report-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.sales-report-empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sales-report-empty-state-icon {
+    font-size: 2rem;
+}
+
+/* Chart Bar - Dynamic height handled inline, but base styles here */
+.chart-bar .bar {
+    transition: height 0.3s ease;
+}
+
 @media (max-width: 768px) {
     .sales-report-filters {
         flex-direction: column;
