@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
-import { Customer, DashboardStats, SalesData, LoadingState, Sales, ProductSalesData } from "../types";
+import { DashboardStats, SalesData, LoadingState, Sales, ProductSalesData } from "../types";
 import { Cashier } from "./Cashier";
 import { Sales as SalesPage } from "./Sales";
 import { Customers } from "./Customers";
@@ -20,21 +20,36 @@ const StatCard = ({ title, value, change, icon }: { title: string; value: string
 );
 
 const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
-  const maxValue = Math.max(...data.map(d => d.sales));
+  const maxValue = Math.max(...data.map(d => d.sales), 1); // Prevent division by zero
   
   return (
     <div className="chart-container">
       <h3>{title}</h3>
       <div className="chart">
-        {data.map((item, index) => (
-          <div key={index} className="chart-bar">
-            <div 
-              className="bar" 
-              style={{ height: `${(item.sales / maxValue) * 100}%` }}
-            ></div>
-            <span className="bar-label">{item.month}</span>
-          </div>
-        ))}
+        {data.map((item, index) => {
+          const barHeight = maxValue > 0 && item.sales > 0 ? (item.sales / maxValue) * 100 : 0;
+          return (
+            <div key={index} className="chart-bar">
+              <div className="bar-value-container">
+                <span className="bar-value">
+                  IDR {item.sales.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+                <span className="bar-customers">
+                  {item.customers} {item.customers === 1 ? 'customer' : 'customers'}
+                </span>
+              </div>
+              <div 
+                className="bar" 
+                style={{ 
+                  height: barHeight > 0 ? `${barHeight}%` : '2px',
+                  minHeight: barHeight > 0 ? '20px' : '2px'
+                }}
+                title={`${item.month}: IDR ${item.sales.toLocaleString('id-ID')} (${item.customers} customers)`}
+              ></div>
+              <span className="bar-label">{item.month}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -97,9 +112,7 @@ const ProductSalesTable = ({ sales }: { sales: Sales[] }) => {
 
 export const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<string>("home");
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [salesTransactions, setSalesTransactions] = useState<Sales[]>([]);
   const [loading, setLoading] = useState<LoadingState>({ isLoading: true, error: null });
 
@@ -180,22 +193,71 @@ export const Dashboard = () => {
     return null;
   };
 
+  // Helper function to calculate sales data from actual transactions
+  const calculateSalesTrendData = (sales: Sales[]): SalesData[] => {
+    // Get last 6 months - ensure we get unique consecutive months
+    const now = new Date();
+    const last6Months: Date[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      last6Months.push(date);
+    }
+
+    // Use a Map to ensure unique months and aggregate data
+    const monthDataMap = new Map<string, { month: string; sales: number; customers: Set<string> }>();
+
+    last6Months.forEach(date => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`; // YYYY-MM format
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      // Initialize if not exists
+      if (!monthDataMap.has(monthKey)) {
+        monthDataMap.set(monthKey, {
+          month: monthName,
+          sales: 0,
+          customers: new Set()
+        });
+      }
+      
+      // Filter sales for this month
+      const monthSales = sales.filter(sale => sale.saleDate.startsWith(monthKey));
+      
+      // Aggregate data
+      const monthData = monthDataMap.get(monthKey)!;
+      monthData.sales = monthSales.reduce((sum, sale) => sum + sale.amount, 0);
+      monthSales.forEach(sale => monthData.customers.add(sale.customerId));
+    });
+
+    // Convert to array maintaining order
+    return last6Months.map(date => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const monthData = monthDataMap.get(monthKey)!;
+      
+      return {
+        month: monthData.month,
+        sales: monthData.sales,
+        customers: monthData.customers.size
+      };
+    });
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading({ isLoading: true, error: null });
         
         // Fetch all data in parallel
-        const [customersData, statsData, salesDataResult, salesTransactionsResult] = await Promise.all([
-          apiService.getCustomers(),
+        const [statsData, salesTransactionsResult] = await Promise.all([
           apiService.getDashboardStats(),
-          apiService.getSalesData(),
           apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
         ]);
 
-        setCustomers(customersData);
         setDashboardStats(statsData);
-        setSalesData(salesDataResult);
         setSalesTransactions(salesTransactionsResult.data || []);
         setLoading({ isLoading: false, error: null });
       } catch (error) {
@@ -212,15 +274,11 @@ export const Dashboard = () => {
       setLoading({ isLoading: true, error: null });
       await apiService.seedData();
       // Refresh data after seeding
-      const [customersData, statsData, salesDataResult, salesTransactionsResult] = await Promise.all([
-        apiService.getCustomers(),
+      const [statsData, salesTransactionsResult] = await Promise.all([
         apiService.getDashboardStats(),
-        apiService.getSalesData(),
         apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
       ]);
-      setCustomers(customersData);
       setDashboardStats(statsData);
-      setSalesData(salesDataResult);
       setSalesTransactions(salesTransactionsResult.data || []);
       setLoading({ isLoading: false, error: null });
     } catch (error) {
@@ -237,6 +295,9 @@ export const Dashboard = () => {
 
   // Get most sold product
   const mostSoldProduct = getMostSoldProduct(salesTransactions);
+
+  // Calculate sales trend data from actual transactions
+  const actualSalesTrendData = calculateSalesTrendData(salesTransactions);
 
   return (
     <div className="app-container">
@@ -329,7 +390,7 @@ export const Dashboard = () => {
 
               <div className="dashboard-grid">
                 <div className="chart-section">
-                  <SimpleChart data={salesData} title="Sales Trend (Last 6 Months)" />
+                  <SimpleChart data={actualSalesTrendData} title="Sales Trend (Last 6 Months)" />
                 </div>
                 <div className="table-section">
                   <ProductSalesTable sales={salesTransactions} />
