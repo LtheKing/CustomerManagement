@@ -56,7 +56,7 @@ const CustomerTable = ({ customers }: { customers: Customer[] }) => {
                 </span>
               </td>
               <td>{getLastOrderDate(customer)}</td>
-              <td>${getTotalSpent(customer).toLocaleString()}</td>
+              <td>IDR {getTotalSpent(customer).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
             </tr>
           ))}
         </tbody>

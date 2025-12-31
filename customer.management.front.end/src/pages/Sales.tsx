@@ -43,7 +43,7 @@ const AnalyticTab = ({ customers, dashboardStats, salesData }: { customers: Cust
               const topTotal = top.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
               return customerTotal > topTotal ? customer : top;
             }).name : "N/A"}</p>
-            <span>${customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString() : "0"}</span>
+            <span>IDR {customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "0"}</span>
           </div>
           <div className="insight-card">
             <h4>Total Orders</h4>
@@ -423,7 +423,7 @@ const ReportTab = () => {
                     <td>{transaction.customerName}</td>
                     <td>{transaction.productName}</td>
                     <td className="text-center">{transaction.quantity}</td>
-                    <td className="text-right">${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="text-right">IDR {transaction.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                     <td>{transaction.cashierName || "N/A"}</td>
                   </tr>
                 ))

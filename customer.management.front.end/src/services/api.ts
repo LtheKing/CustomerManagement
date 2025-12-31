@@ -496,11 +496,127 @@ class ApiService {
       return result.map((product: any) => ({
         id: product.Id || product.id,
         name: product.Name || product.name,
+        sku: product.SKU || product.sku || '',
         price: product.Price || product.price,
+        stock: product.Stock || product.stock || 0,
+        isActive: product.IsActive ?? product.isActive ?? true,
+        createdAt: product.CreatedAt || product.createdAt || new Date().toISOString(),
+        updatedAt: product.UpdatedAt || product.updatedAt,
       }));
     } catch (error) {
       console.warn('Products endpoint not available', error);
       return [];
+    }
+  }
+
+  async getProduct(id: string): Promise<Product> {
+    const result = await this.fetchData<any>(`/Product/${id}`);
+    
+    // Convert PascalCase response to camelCase
+    return {
+      id: result.Id || result.id,
+      name: result.Name || result.name,
+      sku: result.SKU || result.sku || '',
+      price: result.Price || result.price,
+      stock: result.Stock || result.stock || 0,
+      isActive: result.IsActive ?? result.isActive ?? true,
+      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
+      updatedAt: result.UpdatedAt || result.updatedAt,
+    };
+  }
+
+  async createProduct(request: { name: string; sku: string; price: number; stock?: number; isActive?: boolean }): Promise<Product> {
+    const requestBody = {
+      Name: request.name,
+      SKU: request.sku,
+      Price: request.price,
+      Stock: request.stock ?? 0,
+      IsActive: request.isActive ?? true,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/Product`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return {
+      id: result.Id || result.id,
+      name: result.Name || result.name,
+      sku: result.SKU || result.sku || '',
+      price: result.Price || result.price,
+      stock: result.Stock || result.stock || 0,
+      isActive: result.IsActive ?? result.isActive ?? true,
+      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
+      updatedAt: result.UpdatedAt || result.updatedAt,
+    };
+  }
+
+  async updateProduct(id: string, request: { name?: string; sku?: string; price?: number; stock?: number; isActive?: boolean }): Promise<void> {
+    const requestBody: any = {};
+    if (request.name !== undefined) requestBody.Name = request.name;
+    if (request.sku !== undefined) requestBody.SKU = request.sku;
+    if (request.price !== undefined) requestBody.Price = request.price;
+    if (request.stock !== undefined) requestBody.Stock = request.stock;
+    if (request.isActive !== undefined) requestBody.IsActive = request.isActive;
+
+    const response = await fetch(`${API_BASE_URL}/Product/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/Product/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
     }
   }
 }

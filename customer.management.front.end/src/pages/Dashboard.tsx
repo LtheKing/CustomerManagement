@@ -5,6 +5,7 @@ import { Cashier } from "./Cashier";
 import { Sales } from "./Sales";
 import { Customers } from "./Customers";
 import { Expense } from "./Expense";
+import { ProductPage } from "./Product";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -92,7 +93,7 @@ const CustomerTable = ({ customers }: { customers: Customer[] }) => {
                 </span>
               </td>
               <td>{getLastOrderDate(customer)}</td>
-              <td>${getTotalSpent(customer).toLocaleString()}</td>
+              <td>IDR {getTotalSpent(customer).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
             </tr>
           ))}
         </tbody>
@@ -175,6 +176,9 @@ export const Dashboard = () => {
           <div className={`nav-item ${activeTab === "expense" ? "active" : ""}`} onClick={() => setActiveTab("expense")}>
             💸 Expense
           </div>
+          <div className={`nav-item ${activeTab === "product" ? "active" : ""}`} onClick={() => setActiveTab("product")}>
+            📦 Products
+          </div>
           <div className="nav-item">
             📈 Analytics
           </div>
@@ -214,7 +218,7 @@ export const Dashboard = () => {
                 <div className="stats-grid">
                   <StatCard 
                     title="Total Revenue" 
-                    value={`$${dashboardStats.totalRevenue.toLocaleString()}`} 
+                    value={`IDR ${dashboardStats.totalRevenue.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
                     change="+12% from last month" 
                     icon="💰"
                   />
@@ -232,7 +236,7 @@ export const Dashboard = () => {
                   />
                   <StatCard 
                     title="Avg Order Value" 
-                    value={`$${Math.round(dashboardStats.avgOrderValue).toLocaleString()}`} 
+                    value={`IDR ${Math.round(dashboardStats.avgOrderValue).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
                     change="+3% from last month" 
                     icon="📊"
                   />
@@ -256,6 +260,8 @@ export const Dashboard = () => {
             <Cashier />
           ) : activeTab === "expense" ? (
             <Expense />
+          ) : activeTab === "product" ? (
+            <ProductPage />
           ) : null}
         </div>
       </div>

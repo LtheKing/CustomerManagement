@@ -408,7 +408,7 @@ export const Expense = () => {
                     <tr key={expense.id}>
                       <td>{formatDate(expense.expenseDate)}</td>
                       <td>{expense.description}</td>
-                      <td className="text-right">${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="text-right">IDR {expense.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                     </tr>
                   ))
                 )}

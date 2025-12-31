@@ -61,11 +61,6 @@ export function CustomerFormExample() {
     setIsOpen(true);
   };
 
-  // const handleEdit = (customer: Customer) => {
-  //   setEditingCustomer(customer);
-  //   setIsOpen(true);
-  // };
-
   const handleSubmit = async (data: Partial<Customer>) => {
     if (editingCustomer) {
       // Update existing customer
@@ -88,9 +83,6 @@ export function CustomerFormExample() {
   return (
     <>
       <button onClick={handleCreate}>Create Customer</button>
-      
-      {/* Example: Edit button in a table row */}
-      {/* <button onClick={() => handleEdit(customer)}>Edit</button> */}
 
       <GenericForm<Customer>
         isOpen={isOpen}
