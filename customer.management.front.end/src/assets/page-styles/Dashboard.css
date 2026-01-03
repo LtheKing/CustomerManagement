@@ -403,29 +403,6 @@
     border-top: 1px solid #334155;
 }
 
-.seed-button {
-    width: 100%;
-    background: #10b981;
-    color: white;
-    border: none;
-    padding: 0.75rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
-}
-
-.seed-button:hover:not(:disabled) {
-    background: #059669;
-    transform: translateY(-1px);
-}
-
-.seed-button:disabled {
-    background: #6b7280;
-    cursor: not-allowed;
-    transform: none;
-}
 
 /* Status Badge Updates */
 .status.no-orders {

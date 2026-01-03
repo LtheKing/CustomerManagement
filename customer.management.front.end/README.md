@@ -68,8 +68,6 @@ The frontend connects to these backend endpoints:
 - `POST /api/customers` - Create new customer
 - `PUT /api/customers/{id}` - Update customer
 - `DELETE /api/customers/{id}` - Delete customer
-- `POST /api/seed` - Seed sample data
-- `GET /api/seed/test` - Test database connection
 
 ## Dashboard Features
 
@@ -90,13 +88,6 @@ The frontend connects to these backend endpoints:
 - Customer status based on recent activity
 - Total spending per customer
 
-## Data Seeding
-
-Click the "🌱 Seed Data" button in the sidebar to populate the database with sample data. This will create:
-
-- Sample customers
-- Sales records
-- User accounts
 - Traffic data
 
 ## Technology Stack
@@ -139,7 +130,6 @@ If you encounter CORS errors when the frontend tries to connect to the backend:
 ### Database Connection Issues
 
 1. **Update Connection String**: Ensure your SQL Server connection string in `appsettings.json` is correct
-2. **Test Connection**: Use the "🌱 Seed Data" button to test database connectivity
 3. **Check SQL Server**: Ensure SQL Server is running and accessible
 
 ### Common Issues

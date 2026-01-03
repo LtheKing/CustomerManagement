@@ -269,24 +269,6 @@ export const Dashboard = () => {
     fetchData();
   }, []);
 
-  const handleSeedData = async () => {
-    try {
-      setLoading({ isLoading: true, error: null });
-      await apiService.seedData();
-      // Refresh data after seeding
-      const [statsData, salesTransactionsResult] = await Promise.all([
-        apiService.getDashboardStats(),
-        apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
-      ]);
-      setDashboardStats(statsData);
-      setSalesTransactions(salesTransactionsResult.data || []);
-      setLoading({ isLoading: false, error: null });
-    } catch (error) {
-      console.error('Error seeding data:', error);
-      setLoading({ isLoading: false, error: error instanceof Error ? error.message : 'Failed to seed data' });
-    }
-  };
-
   // Calculate month-over-month changes
   const monthData = getMonthData(salesTransactions);
   const revenueChange = calculatePercentageChange(monthData.currentMonthRevenue, monthData.previousMonthRevenue);
@@ -323,18 +305,6 @@ export const Dashboard = () => {
           </div>
           <div className={`nav-item ${activeTab === "product" ? "active" : ""}`} onClick={() => setActiveTab("product")}>
             📦 Products
-          </div>
-          <div className="nav-item">
-            📈 Analytics
-          </div>
-          <div className="sidebar-footer">
-            <button 
-              className="seed-button" 
-              onClick={handleSeedData}
-              disabled={loading.isLoading}
-            >
-              {loading.isLoading ? "⏳ Loading..." : "🌱 Seed Data"}
-            </button>
           </div>
         </div>
         <div className="content-panel">

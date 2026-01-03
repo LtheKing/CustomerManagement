@@ -28,7 +28,7 @@ primary_region = 'iad'
     timeout = '5s'
     grace_period = '10s'
     method = 'GET'
-    path = '/api/seed/test'
+    path = '/health'
 
 [[services]]
   protocol = 'tcp'

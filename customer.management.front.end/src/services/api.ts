@@ -7,14 +7,14 @@ import {
   CapitalCashResponse,
   CreateCashFlowRequest,
   CashFlowResponse,
-  SeedDataResponse,
-  TestConnectionResponse,
   Expense,
   CreateSalesTransactionRequest,
   SalesTransactionResponse,
   Product,
   Sales,
-  PagedResult
+  PagedResult,
+  LoginRequest,
+  LoginResponse
 } from '../types';
 
 const API_BASE_URL =
@@ -143,23 +143,6 @@ class ApiService {
         customers: monthCustomers
       };
     });
-  }
-
-  // Seed data endpoint
-  async seedData(): Promise<SeedDataResponse> {
-    const response = await fetch(`${API_BASE_URL}/seed`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  }
-
-  async testConnection(): Promise<TestConnectionResponse> {
-    return this.fetchData<TestConnectionResponse>('/seed/test');
   }
 
   // Capital Cash endpoints (now using CashFlowController)
@@ -603,6 +586,53 @@ class ApiService {
   async deleteProduct(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/Product/${id}`, {
       method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+  }
+
+  // User authentication endpoints
+  async login(request: LoginRequest): Promise<LoginResponse> {
+    const response = await fetch(`${API_BASE_URL}/user/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  }
+
+  async logout(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/user/logout`, {
+      method: 'POST',
     });
 
     if (!response.ok) {

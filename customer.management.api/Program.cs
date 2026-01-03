@@ -96,11 +96,11 @@ builder.Services.AddDbContext<CustomerManagementDbContext>(options =>
 });
 
 // Add Services
-builder.Services.AddScoped<DataSeedingService>();
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 var app = builder.Build();
 
@@ -207,41 +207,5 @@ app.MapGet("/db-test", async (CustomerManagementDbContext db) =>
         }, statusCode: 500);
     }
 }).AllowAnonymous();
-
-// Seed data on startup with retry logic
-_ = Task.Run(async () =>
-{
-    const int maxRetries = 10;
-    const int delaySeconds = 5;
-    
-    for (int i = 0; i < maxRetries; i++)
-    {
-        try
-        {
-            using var scope = app.Services.CreateScope();
-            var seedingService = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
-            
-            // Test connection first
-            if (await seedingService.TestConnectionAsync())
-            {
-                await seedingService.SeedDataAsync();
-                Console.WriteLine("Data seeding completed successfully.");
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Attempt {i + 1}/{maxRetries}: Database not ready yet. Error: {ex.Message}");
-            if (i < maxRetries - 1)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
-            }
-            else
-            {
-                Console.WriteLine($"Failed to seed data after {maxRetries} attempts. Application will continue without seeded data.");
-            }
-        }
-    }
-});
 
 app.Run();
