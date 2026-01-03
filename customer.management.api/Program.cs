@@ -19,14 +19,65 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        // Must specify exact origins when using AllowCredentials()
-        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
-            ?? new[] { "http://localhost:5173", "http://localhost:3000", "https://localhost:5173" };
+        // Check if we should allow all origins (for debugging - set via environment variable)
+        var allowAllOrigins = builder.Configuration.GetValue<bool>("Cors:AllowAllOrigins", false);
         
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // Required for cookies
+        if (allowAllOrigins)
+        {
+            // TEMPORARY: Allow all origins for debugging (remove in production)
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Get allowed origins from configuration
+            var configuredOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+            
+            // Default localhost origins for development
+            var localhostOrigins = new[]
+            {
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://localhost:5173",
+                "http://localhost:80"
+            };
+            
+            // Build list of all allowed origins
+            var allOrigins = new List<string>(localhostOrigins);
+            
+            // Add configured origins if any
+            if (configuredOrigins != null && configuredOrigins.Length > 0)
+            {
+                allOrigins.AddRange(configuredOrigins);
+            }
+            
+            // Use SetIsOriginAllowed to dynamically check origins (supports Vercel wildcards)
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrEmpty(origin))
+                    return false;
+                
+                // Allow exact matches from localhost or configured origins
+                if (allOrigins.Contains(origin))
+                {
+                    return true;
+                }
+                
+                // Allow all Vercel domains (production and preview deployments)
+                // Vercel URLs: https://*.vercel.app or https://*-*.vercel.app
+                if (origin.StartsWith("https://") && origin.EndsWith(".vercel.app"))
+                {
+                    return true;
+                }
+                
+                return false;
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // Required for cookies
+        }
     });
 });
 
@@ -168,11 +219,11 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
-// Enable routing first
-app.UseRouting();
-
-// Enable CORS - after routing, before authorization
+// Enable CORS FIRST - must be before UseRouting for preflight requests
 app.UseCors("AllowReactApp");
+
+// Enable routing
+app.UseRouting();
 
 // Use Cookie Policy
 app.UseCookiePolicy();
