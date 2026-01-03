@@ -38,7 +38,7 @@ Host=db.xxxxx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password
   - [ ] `ConnectionStrings__DefaultConnection` (with Supabase details)
 - [ ] Service deployed successfully
 - [ ] Noted backend URL: `https://your-api.onrender.com`
-- [ ] Tested API endpoint: `/api/seed/test`
+- [ ] Tested API endpoint: `/health`
 
 ## Step 3: Frontend Deployment (Vercel)
 
@@ -95,7 +95,6 @@ Host=db.xxxxx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password
 - [ ] Database connection works
 - [ ] API calls from frontend succeed
 - [ ] CORS errors resolved
-- [ ] Sample data can be seeded
 - [ ] All features work end-to-end
 
 ## Post-Deployment

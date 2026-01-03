@@ -18,7 +18,6 @@ Common issues and solutions for deploying the Customer Management application.
 **Symptoms:**
 - API starts but can't connect to Supabase
 - Error: "Connection refused" or "Timeout"
-- Seed endpoint fails
 
 **Solutions:**
 
@@ -124,7 +123,7 @@ Common issues and solutions for deploying the Customer Management application.
 
 3. **Verify Backend is Running**
    - Check Render dashboard - service should be "Live"
-   - Test backend URL directly: `https://your-api.onrender.com/api/seed/test`
+   - Test backend URL directly: `https://your-api.onrender.com/health`
    - Note: Render free tier spins down after 15 min inactivity
 
 4. **Check Network Tab**

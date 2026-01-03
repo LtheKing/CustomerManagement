@@ -68,7 +68,6 @@ Before starting, ensure you have:
 
 ### 1.5 (Optional) Seed Sample Data
 1. If you have `sample_data.sql`, run it in the SQL Editor
-2. Or use the seed endpoint after deploying the API
 
 ---
 
@@ -307,7 +306,7 @@ jobs:
 2. Configure:
    - **Monitor Type:** HTTP(s)
    - **Friendly Name:** Customer Management API
-   - **URL:** `https://customer-management-api.onrender.com/api/seed/test`
+   - **URL:** `https://customer-management-api.onrender.com/health`
    - **Monitoring Interval:** 5 minutes (free tier)
 3. Add another monitor for frontend:
    - **Friendly Name:** Customer Management Frontend
@@ -325,7 +324,7 @@ jobs:
 
 ### 8.1 Test Backend API
 1. Visit: `https://customer-management-api.onrender.com/swagger` (if Swagger is enabled in production)
-2. Or test: `https://customer-management-api.onrender.com/api/seed/test`
+2. Or test: `https://customer-management-api.onrender.com/health`
 3. Should return connection status
 
 ### 8.2 Test Frontend
@@ -334,8 +333,8 @@ jobs:
 3. Test API calls from the frontend
 
 ### 8.3 Test Database Connection
-1. Use the seed endpoint: `POST https://customer-management-api.onrender.com/api/seed`
-2. Check Supabase dashboard to verify data was created
+1. Test the database connection endpoint: `GET https://customer-management-api.onrender.com/db-test`
+2. Check Supabase dashboard to verify connection
 
 ---
 

@@ -94,9 +94,17 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 // In Fly.io, set as: Jwt__Key (double underscore for nested config)
 var jwtKey = builder.Configuration["Jwt:Key"] 
     ?? builder.Configuration["JWT_KEY"]  // Alternative env var name
-    ?? throw new InvalidOperationException(
-        "JWT Key not configured. Please set Jwt__Key environment variable in Fly.io. " +
-        "Run: fly secrets set Jwt__Key='YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!'");
+    ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!"; // Default fallback
+
+// Log warning if using default key (not set via configuration)
+if ((builder.Configuration["Jwt:Key"] == null && builder.Configuration["JWT_KEY"] == null))
+{
+    Console.WriteLine("⚠️  ⚠️  ⚠️  WARNING: Using DEFAULT JWT Key! This is INSECURE for production! ⚠️  ⚠️  ⚠️");
+    Console.WriteLine("⚠️  Please set Jwt__Key secret in Fly.io:");
+    Console.WriteLine("⚠️  fly secrets set Jwt__Key='YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!' -a customer-management-api-shy-surf-8080");
+    Console.WriteLine("⚠️  Or generate a secure key: openssl rand -base64 64");
+}
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "CustomerManagementAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "CustomerManagementClient";
 

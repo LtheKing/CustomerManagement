@@ -26,7 +26,10 @@ namespace customer.management.api.Services
         public string GenerateAccessToken(UserDto user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"));
+            var jwtKey = _configuration["Jwt:Key"] 
+                ?? _configuration["JWT_KEY"]
+                ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!"; // Default fallback
+            var key = Encoding.UTF8.GetBytes(jwtKey);
             
             var claims = new List<Claim>
             {
@@ -61,13 +64,16 @@ namespace customer.management.api.Services
 
         public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
         {
+            var jwtKey = _configuration["Jwt:Key"] 
+                ?? _configuration["JWT_KEY"]
+                ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!"; // Default fallback
+            
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateAudience = false,
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"))),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
                 ValidateLifetime = false // We don't validate lifetime here since token is expired
             };
 
