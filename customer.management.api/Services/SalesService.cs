@@ -188,7 +188,7 @@ namespace customer.management.api.Services
                 try
                 {
                     // Resolve customer: Find existing or create new
-                    CustomerModelEntity customer;
+                    CustomerModelEntity? customer;
                     Guid resolvedCustomerId;
 
                     if (createDto.CustomerId.HasValue)

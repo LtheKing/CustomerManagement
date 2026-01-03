@@ -19,6 +19,7 @@ namespace customer.management.data.entity.DbContext
         public DbSet<ExpenseModelEntity> Expenses { get; set; }
         public DbSet<SalesAllocationModelEntity> SalesAllocations { get; set; }
         public DbSet<CashFlowModelEntity> CashFlows { get; set; }
+        public DbSet<RefreshTokenModelEntity> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -162,6 +163,24 @@ namespace customer.management.data.entity.DbContext
 
                 // Optional: enforce max length at DB level if migrations are used
                 entity.Property(e => e.FlowType).HasMaxLength(20);
+            });
+
+            // Configure RefreshToken entity
+            modelBuilder.Entity<RefreshTokenModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                // Index for faster lookups
+                entity.HasIndex(e => e.Token).IsUnique();
+                entity.HasIndex(e => e.UserId);
             });
         }
     }

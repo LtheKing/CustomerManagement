@@ -22,12 +22,40 @@ const API_BASE_URL =
   (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
 
 class ApiService {
-  private async fetchData<T>(endpoint: string): Promise<T> {
+  private isRefreshing = false;
+  private refreshPromise: Promise<void> | null = null;
+
+  private async fetchData<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: 'include', // Send cookies automatically
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+      
+      // Handle 401 Unauthorized - token expired
+      if (response.status === 401 && endpoint !== '/user/login' && endpoint !== '/user/refresh') {
+        // Try to refresh token
+        await this.refreshAccessToken();
+        // Retry original request
+        return this.fetchData<T>(endpoint, options);
+      }
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
       
       return await response.json();
@@ -35,6 +63,42 @@ class ApiService {
       console.error(`API Error for ${endpoint}:`, error);
       throw error;
     }
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    // Prevent multiple simultaneous refresh requests
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/refresh`, {
+          method: 'POST',
+          credentials: 'include', // Send refresh token cookie
+        });
+
+        if (!response.ok) {
+          // Refresh failed, redirect to login
+          localStorage.removeItem("user");
+          localStorage.removeItem("isAuthenticated");
+          window.location.href = "/login";
+          throw new Error("Session expired. Please login again.");
+        }
+      } catch (error) {
+        // If refresh fails, clear auth and redirect
+        localStorage.removeItem("user");
+        localStorage.removeItem("isAuthenticated");
+        window.location.href = "/login";
+        throw error;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   // Customer endpoints
@@ -47,43 +111,23 @@ class ApiService {
   }
 
   async createCustomer(request: CreateCustomerRequest): Promise<CustomerResponse> {
-    const response = await fetch(`${API_BASE_URL}/customers`, {
+    return this.fetchData<CustomerResponse>('/customers', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(request),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
   }
 
   async updateCustomer(id: string, request: UpdateCustomerRequest): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    await this.fetchData<void>(`/customers/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(request),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
   }
 
   async deleteCustomer(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    await this.fetchData<void>(`/customers/${id}`, {
       method: 'DELETE',
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
   }
 
   // Dashboard data processing
@@ -605,49 +649,16 @@ class ApiService {
 
   // User authentication endpoints
   async login(request: LoginRequest): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/user/login`, {
+    return this.fetchData<LoginResponse>('/user/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(request),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error || errorMessage;
-      } catch {
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      throw new Error(errorMessage);
-    }
-
-    return await response.json();
   }
 
   async logout(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/user/logout`, {
+    await this.fetchData<void>('/user/logout', {
       method: 'POST',
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error || errorMessage;
-      } catch {
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      throw new Error(errorMessage);
-    }
   }
 }
 

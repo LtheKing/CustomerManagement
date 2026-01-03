@@ -6,6 +6,7 @@ import { Sales as SalesPage } from "./Sales";
 import { Customers } from "./Customers";
 import { Expense } from "./Expense";
 import { ProductPage } from "./Product";
+import { isAdmin, isSales } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -111,10 +112,32 @@ const ProductSalesTable = ({ sales }: { sales: Sales[] }) => {
 };
 
 export const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState<string>("home");
+  // Set default tab based on user role
+  const getDefaultTab = (): string => {
+    if (isSales()) return "cashier";
+    return "home";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [salesTransactions, setSalesTransactions] = useState<Sales[]>([]);
   const [loading, setLoading] = useState<LoadingState>({ isLoading: true, error: null });
+
+  // Handle tab change with role-based access control
+  const handleTabChange = (tab: string) => {
+    // Sales users can only access cashier
+    if (isSales() && tab !== "cashier") {
+      setActiveTab("cashier");
+      return;
+    }
+    // Admin can access all tabs
+    if (isAdmin() || tab === "cashier") {
+      setActiveTab(tab);
+      return;
+    }
+    // Default fallback
+    setActiveTab("cashier");
+  };
 
   // Helper function to calculate percentage change
   const calculatePercentageChange = (current: number, previous: number): string => {
@@ -281,6 +304,24 @@ export const Dashboard = () => {
   // Calculate sales trend data from actual transactions
   const actualSalesTrendData = calculateSalesTrendData(salesTransactions);
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Call logout API to revoke refresh token and clear cookies
+      await apiService.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear authentication data
+      localStorage.removeItem("user");
+      localStorage.removeItem("isAuthenticated");
+      
+      // Redirect to login page
+      window.location.href = "/login";
+    }
+  };
+
   return (
     <div className="app-container">
       <div className="main-content">
@@ -288,23 +329,53 @@ export const Dashboard = () => {
           <div className="sidebar-header">
             <h2>Dashboard</h2>
           </div>
-          <div className={`nav-item ${activeTab === "home" ? "active" : ""}`} onClick={() => setActiveTab("home")}>
-            📊 Overview
-          </div>
-          <div className={`nav-item ${activeTab === "sales" ? "active" : ""}`} onClick={() => setActiveTab("sales")}>
-            💰 Sales
-          </div>
-          <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => setActiveTab("customers")}>
-            👥 Customers
-          </div>
-            <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => setActiveTab("cashier")}>
-              🧾 Cashier
+          
+          {/* Overview - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "home" ? "active" : ""}`} onClick={() => handleTabChange("home")}>
+              📊 Overview
             </div>
-          <div className={`nav-item ${activeTab === "expense" ? "active" : ""}`} onClick={() => setActiveTab("expense")}>
-            💸 Expense
+          )}
+          
+          {/* Sales - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "sales" ? "active" : ""}`} onClick={() => handleTabChange("sales")}>
+              💰 Sales
+            </div>
+          )}
+          
+          {/* Customers - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => handleTabChange("customers")}>
+              👥 Customers
+            </div>
+          )}
+          
+          {/* Cashier - All users */}
+          <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => handleTabChange("cashier")}>
+            🧾 Cashier
           </div>
-          <div className={`nav-item ${activeTab === "product" ? "active" : ""}`} onClick={() => setActiveTab("product")}>
-            📦 Products
+          
+          {/* Expense - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "expense" ? "active" : ""}`} onClick={() => handleTabChange("expense")}>
+              💸 Expense
+            </div>
+          )}
+          
+          {/* Products - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "product" ? "active" : ""}`} onClick={() => handleTabChange("product")}>
+              📦 Products
+            </div>
+          )}
+          <div className="sidebar-footer">
+            <button 
+              className="logout-button" 
+              onClick={handleLogout}
+            >
+              🚪 Logout
+            </button>
           </div>
         </div>
         <div className="content-panel">
@@ -322,7 +393,7 @@ export const Dashboard = () => {
                 🔄 Retry
               </button>
             </div>
-          ) : activeTab === "home" ? (
+          ) : activeTab === "home" && isAdmin() ? (
             <div className="dashboard-content">
               <div className="dashboard-header">
                 <h1>Customer Management Dashboard</h1>
@@ -367,17 +438,20 @@ export const Dashboard = () => {
                 </div>
               </div>
             </div>
-          ) : activeTab === "sales" ? (
+          ) : activeTab === "sales" && isAdmin() ? (
             <SalesPage />
-          ) : activeTab === "customers" ? (
+          ) : activeTab === "customers" && isAdmin() ? (
             <Customers />
           ) : activeTab === "cashier" ? (
             <Cashier />
-          ) : activeTab === "expense" ? (
+          ) : activeTab === "expense" && isAdmin() ? (
             <Expense />
-          ) : activeTab === "product" ? (
+          ) : activeTab === "product" && isAdmin() ? (
             <ProductPage />
-          ) : null}
+          ) : (
+            // Fallback: If Sales user tries to access restricted tab, show cashier
+            <Cashier />
+          )}
         </div>
       </div>
     </div>

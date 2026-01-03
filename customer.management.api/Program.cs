@@ -5,22 +5,83 @@ using customer.management.api.Interfaces;
 using System.Linq;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Npgsql;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.CookiePolicy;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Add CORS - Allow all origins
+// Add CORS - Allow specific origins with credentials
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        // Allow all origins, headers, and methods
-        // Note: AllowAnyOrigin() cannot be used with AllowCredentials()
-        policy.AllowAnyOrigin()
+        // Must specify exact origins when using AllowCredentials()
+        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+            ?? new[] { "http://localhost:5173", "http://localhost:3000", "https://localhost:5173" };
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials(); // Required for cookies
     });
+});
+
+// Configure Cookie Policy
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.HttpOnly = HttpOnlyPolicy.Always;
+    options.Secure = CookieSecurePolicy.SameAsRequest; // Use Always in production with HTTPS
+    // Note: SameSite is set per-cookie in CookieOptions, not in CookiePolicyOptions
+});
+
+// Add JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "CustomerManagementAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "CustomerManagementClient";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero // Remove delay of token expiration
+    };
+    
+    // Extract token from cookie if not in Authorization header
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Try to get token from cookie if not in header
+            if (string.IsNullOrEmpty(context.Token))
+            {
+                context.Token = context.Request.Cookies["accessToken"];
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+// Add Authorization
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("SalesManagerOrAdmin", policy => policy.RequireRole("Admin", "SalesManager"));
 });
 
 builder.Services.AddControllers()
@@ -101,6 +162,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 var app = builder.Build();
 
@@ -112,6 +174,9 @@ app.UseRouting();
 // Enable CORS - after routing, before authorization
 app.UseCors("AllowReactApp");
 
+// Use Cookie Policy
+app.UseCookiePolicy();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -121,6 +186,8 @@ if (app.Environment.IsDevelopment())
 // Disable HTTPS redirection on Fly.io (handled at edge)
 // app.UseHttpsRedirection();
 
+// Authentication must come before Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Add a simple health check endpoint (no database required)

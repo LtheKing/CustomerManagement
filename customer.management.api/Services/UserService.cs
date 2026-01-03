@@ -256,6 +256,56 @@ namespace customer.management.api.Services
         }
 
         /// <summary>
+        /// Validate refresh token and return user ID if valid
+        /// </summary>
+        public async Task<Guid?> ValidateRefreshTokenAsync(string refreshToken)
+        {
+            var token = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
+
+            if (token == null || token.ExpiresAt < DateTime.UtcNow)
+            {
+                return null;
+            }
+
+            return token.UserId;
+        }
+
+        /// <summary>
+        /// Save refresh token to database
+        /// </summary>
+        public async Task SaveRefreshTokenAsync(Guid userId, string refreshToken)
+        {
+            var tokenEntity = new RefreshTokenModelEntity
+            {
+                UserId = userId,
+                Token = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(7), // 7 days expiration
+                CreatedAt = DateTime.UtcNow,
+                IsRevoked = false
+            };
+
+            _context.RefreshTokens.Add(tokenEntity);
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Revoke refresh token
+        /// </summary>
+        public async Task RevokeRefreshTokenAsync(string refreshToken)
+        {
+            var token = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (token != null)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
         /// Map entity to DTO
         /// </summary>
         private UserDto MapToDto(UserModelEntity user)

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { GenericForm, FormField } from "../components/GenericForm";
 import { apiService } from "../services/api";
 import { CashFlow, CreateCashFlowRequest, CreateSalesTransactionRequest, Customer, Product } from "../types";
+import { isAdmin } from "../utils/auth";
 import "../assets/page-styles/Cashier.css";
 
 export const Cashier = () => {
@@ -331,23 +332,25 @@ export const Cashier = () => {
         <div className="dashboard-content">
             <div className="dashboard-header">
                 <h1>Cashier</h1>
-                <p>Record transactions quickly (UI stub for now).</p>
             </div>
 
-            <div className="cashflow-container">
-                <h3>Capital Cash</h3>
-                <div>
-                    <input
-                        type="number"
-                        placeholder="Enter amount"
-                        disabled
-                        value={isLoading ? "Loading..." : (capitalCash ?? 0).toFixed(2)}
-                    />
-                    <button onClick={handleAdjust} disabled={isLoading}>
-                        Adjust
-                    </button>
+            {/* Capital Cash section - Admin only */}
+            {isAdmin() && (
+                <div className="cashflow-container">
+                    <h3>Capital Cash</h3>
+                    <div>
+                        <input
+                            type="number"
+                            placeholder="Enter amount"
+                            disabled
+                            value={isLoading ? "Loading..." : (capitalCash ?? 0).toFixed(2)}
+                        />
+                        <button onClick={handleAdjust} disabled={isLoading || !isAdmin()}>
+                            Adjust
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="table-container">
                 <h3>Point of Sale</h3>

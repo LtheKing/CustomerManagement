@@ -10,6 +10,9 @@ namespace customer.management.api.Interfaces
         Task<UserDto> UpdateUserAsync(Guid id, CreateUserDto updateDto);
         Task<bool> DeleteUserAsync(Guid id);
         Task<LoginResponseDto> LoginAsync(LoginDto loginDto);
+        Task<Guid?> ValidateRefreshTokenAsync(string refreshToken);
+        Task SaveRefreshTokenAsync(Guid userId, string refreshToken);
+        Task RevokeRefreshTokenAsync(string refreshToken);
     }
 }
 

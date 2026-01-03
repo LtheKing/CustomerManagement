@@ -40,7 +40,7 @@ const Login = () => {
       const response = await apiService.login(formData);
       
       if (response.success && response.user) {
-        // Store user data in localStorage or sessionStorage
+        // Store only user info (tokens are in HTTP-only cookies)
         localStorage.setItem("user", JSON.stringify(response.user));
         localStorage.setItem("isAuthenticated", "true");
         
