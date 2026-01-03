@@ -90,7 +90,13 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 });
 
 // Add JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+// Get JWT Key from configuration (environment variable or appsettings.json)
+// In Fly.io, set as: Jwt__Key (double underscore for nested config)
+var jwtKey = builder.Configuration["Jwt:Key"] 
+    ?? builder.Configuration["JWT_KEY"]  // Alternative env var name
+    ?? throw new InvalidOperationException(
+        "JWT Key not configured. Please set Jwt__Key environment variable in Fly.io. " +
+        "Run: fly secrets set Jwt__Key='YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!'");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "CustomerManagementAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "CustomerManagementClient";
 
