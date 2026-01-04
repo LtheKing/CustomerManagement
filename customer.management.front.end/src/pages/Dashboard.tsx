@@ -6,6 +6,7 @@ import { Sales as SalesPage } from "./Sales";
 import { Customers } from "./Customers";
 import { Expense } from "./Expense";
 import { ProductPage } from "./Product";
+import { UserPage } from "./User";
 import { isAdmin, isSales } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 
@@ -369,6 +370,13 @@ export const Dashboard = () => {
               📦 Products
             </div>
           )}
+          
+          {/* Users - Admin only */}
+          {isAdmin() && (
+            <div className={`nav-item ${activeTab === "user" ? "active" : ""}`} onClick={() => handleTabChange("user")}>
+              👤 Users
+            </div>
+          )}
           <div className="sidebar-footer">
             <button 
               className="logout-button" 
@@ -448,6 +456,8 @@ export const Dashboard = () => {
             <Expense />
           ) : activeTab === "product" && isAdmin() ? (
             <ProductPage />
+          ) : activeTab === "user" && isAdmin() ? (
+            <UserPage />
           ) : (
             // Fallback: If Sales user tries to access restricted tab, show cashier
             <Cashier />

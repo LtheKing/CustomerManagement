@@ -14,7 +14,10 @@ import {
   Sales,
   PagedResult,
   LoginRequest,
-  LoginResponse
+  LoginResponse,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest
 } from '../types';
 
 const API_BASE_URL =
@@ -658,6 +661,79 @@ class ApiService {
   async logout(): Promise<void> {
     await this.fetchData<void>('/user/logout', {
       method: 'POST',
+    });
+  }
+
+  // User management endpoints
+  async getUsers(): Promise<User[]> {
+    try {
+      const result = await this.fetchData<any[]>('/user');
+      
+      // Convert PascalCase response to camelCase
+      return result.map((user: any) => ({
+        id: user.Id || user.id,
+        username: user.Username || user.username,
+        email: user.Email || user.email,
+        role: user.Role || user.role,
+        createdAt: user.CreatedAt || user.createdAt || new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.warn('Users endpoint not available', error);
+      return [];
+    }
+  }
+
+  async getUser(id: string): Promise<User> {
+    const result = await this.fetchData<any>(`/user/${id}`);
+    
+    // Convert PascalCase response to camelCase
+    return {
+      id: result.Id || result.id,
+      username: result.Username || result.username,
+      email: result.Email || result.email,
+      role: result.Role || result.role,
+      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
+    };
+  }
+
+  async createUser(request: CreateUserRequest): Promise<User> {
+    const requestBody = {
+      Username: request.username,
+      Email: request.email,
+      Password: request.password,
+      Role: request.role,
+    };
+
+    const result = await this.fetchData<any>('/user', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    return {
+      id: result.Id || result.id,
+      username: result.Username || result.username,
+      email: result.Email || result.email,
+      role: result.Role || result.role,
+      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
+    };
+  }
+
+  async updateUser(id: string, request: UpdateUserRequest): Promise<void> {
+    const requestBody: any = {};
+    if (request.username !== undefined) requestBody.Username = request.username;
+    if (request.email !== undefined) requestBody.Email = request.email;
+    if (request.password !== undefined) requestBody.Password = request.password;
+    if (request.role !== undefined) requestBody.Role = request.role;
+
+    await this.fetchData<void>(`/user/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.fetchData<void>(`/user/${id}`, {
+      method: 'DELETE',
     });
   }
 }
