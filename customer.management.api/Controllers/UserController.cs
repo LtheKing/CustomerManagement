@@ -33,6 +33,35 @@ namespace customer.management.api.Controllers
             }
         }
 
+        // GET: api/user/me
+        [HttpGet("me")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<UserDto>> GetCurrentUser()
+        {
+            try
+            {
+                // Get user ID from JWT claims
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                {
+                    return Unauthorized(new { error = "Invalid token" });
+                }
+
+                var result = await _userService.GetUserByIdAsync(userId);
+
+                if (result == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the user", details = ex.Message });
+            }
+        }
+
         // GET: api/user/5
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetUser(Guid id)

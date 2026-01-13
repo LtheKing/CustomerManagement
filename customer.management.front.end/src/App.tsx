@@ -16,13 +16,13 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         return;
       }
 
-      // Verify token is still valid by checking if we can refresh it
+      // Verify token is still valid by checking current user
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
           (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
         
-        const response = await fetch(`${API_BASE_URL}/user/refresh`, {
-          method: 'POST',
+        const response = await fetch(`${API_BASE_URL}/user/me`, {
+          method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -30,6 +30,9 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         });
 
         if (response.ok) {
+          const userData = await response.json();
+          // Update user data in localStorage
+          localStorage.setItem("user", JSON.stringify(userData));
           setIsAuthenticated(true);
         } else {
           // Token is invalid, clear stale auth data
