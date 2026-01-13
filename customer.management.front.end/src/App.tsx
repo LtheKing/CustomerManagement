@@ -34,14 +34,19 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
           // Update user data in localStorage
           localStorage.setItem("user", JSON.stringify(userData));
           setIsAuthenticated(true);
+        } else if (response.status === 401) {
+          // 401 is expected when token is invalid/expired - silently handle it
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("user");
+          setIsAuthenticated(false);
         } else {
-          // Token is invalid, clear stale auth data
+          // Other errors (500, etc.) - clear auth data
           localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("user");
           setIsAuthenticated(false);
         }
       } catch (error) {
-        // Network error or token invalid, clear stale auth data
+        // Network error - clear stale auth data
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("user");
         setIsAuthenticated(false);
