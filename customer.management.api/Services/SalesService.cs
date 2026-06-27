@@ -153,7 +153,7 @@ namespace customer.management.api.Services
         /// <summary>
         /// Create a new sales transaction
         /// Hybrid approach: Either CustomerId OR CustomerName must be provided
-        /// Also creates a corresponding CashFlow entry with FlowType "SALES"
+        /// Also decreases product stock and creates a corresponding CashFlow entry with FlowType "SALES"
         /// All operations are wrapped in a database transaction for atomicity
         /// Uses execution strategy to support retry on failure
         /// </summary>
@@ -165,11 +165,22 @@ namespace customer.management.api.Services
                 throw new ArgumentException("Either CustomerId or CustomerName must be provided");
             }
 
-            // Validate product exists
+            // Validate product exists and has enough stock
             var product = await _context.Products.FindAsync(createDto.ProductId);
             if (product == null)
             {
                 throw new ArgumentException($"Product with ID {createDto.ProductId} not found");
+            }
+
+            if (!product.IsActive)
+            {
+                throw new ArgumentException($"Product '{product.Name}' is not active.");
+            }
+
+            if (product.Stock < createDto.Quantity)
+            {
+                throw new ArgumentException(
+                    $"Insufficient stock for '{product.Name}'. Available: {product.Stock}, requested: {createDto.Quantity}.");
             }
 
             // Validate user exists
@@ -254,7 +265,11 @@ namespace customer.management.api.Services
                     // Add to context
                     _context.Sales.Add(sale);
 
-                    // Save to get the sale ID (within transaction)
+                    // Decrease product stock
+                    product.Stock -= createDto.Quantity;
+                    product.UpdatedAt = DateTime.UtcNow;
+
+                    // Save sale and stock update (within transaction)
                     await _context.SaveChangesAsync();
 
                     // Create corresponding CashFlow entry directly in the same context

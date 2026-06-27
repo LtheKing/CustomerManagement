@@ -128,7 +128,7 @@ export function SalesTransactionModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content sales-transaction-modal" onClick={(event) => event.stopPropagation()}>
+      <div className={`modal-content sales-transaction-modal ${selectedProduct ? "has-selection" : ""}`} onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <h2>Create Sales Transaction</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -137,9 +137,10 @@ export function SalesTransactionModal({
         </div>
 
         <form onSubmit={handleSubmit} className="sales-transaction-form">
-          {submitError && <div className="form-error-message">{submitError}</div>}
+          <div className="sales-transaction-body">
+            {submitError && <div className="form-error-message">{submitError}</div>}
 
-          <section className="sales-transaction-section">
+            <section className="sales-transaction-section">
             <div className="sales-transaction-section-header">
               <h3>1. Pick a product</h3>
               <span>{activeProducts.length} available</span>
@@ -205,40 +206,42 @@ export function SalesTransactionModal({
                 </div>
               </div>
 
-              <div className="sales-transaction-quantity-row">
-                <label htmlFor="sales-quantity">Quantity</label>
-                <div className="sales-transaction-quantity-controls">
-                  <button
-                    type="button"
-                    className="quantity-btn"
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                    disabled={quantity <= 1 || isSubmitting}
-                  >
-                    −
-                  </button>
-                  <input
-                    id="sales-quantity"
-                    type="number"
-                    min={1}
-                    max={selectedProduct.stock}
-                    value={quantity}
-                    onChange={(event) => handleQuantityChange(Number(event.target.value))}
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="button"
-                    className="quantity-btn"
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                    disabled={quantity >= selectedProduct.stock || isSubmitting}
-                  >
-                    +
-                  </button>
+              <div className="sales-transaction-checkout-row">
+                <div className="sales-transaction-quantity-row">
+                  <label htmlFor="sales-quantity">Quantity</label>
+                  <div className="sales-transaction-quantity-controls">
+                    <button
+                      type="button"
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      disabled={quantity <= 1 || isSubmitting}
+                    >
+                      −
+                    </button>
+                    <input
+                      id="sales-quantity"
+                      type="number"
+                      min={1}
+                      max={selectedProduct.stock}
+                      value={quantity}
+                      onChange={(event) => handleQuantityChange(Number(event.target.value))}
+                      disabled={isSubmitting}
+                    />
+                    <button
+                      type="button"
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      disabled={quantity >= selectedProduct.stock || isSubmitting}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="sales-transaction-total">
-                <span>Total</span>
-                <strong>{formatCurrency(totalAmount)}</strong>
+                <div className="sales-transaction-total">
+                  <span>Total</span>
+                  <strong>{formatCurrency(totalAmount)}</strong>
+                </div>
               </div>
 
               <div className="sales-transaction-customer">
@@ -262,7 +265,9 @@ export function SalesTransactionModal({
             </section>
           )}
 
-          <div className="form-actions">
+          </div>
+
+          <div className="form-actions sales-transaction-footer">
             <button type="button" className="btn-cancel" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
