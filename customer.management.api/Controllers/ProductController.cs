@@ -9,10 +9,12 @@ namespace customer.management.api.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly IProductImageService _productImageService;
 
-        public ProductController(IProductService productService)
+        public ProductController(IProductService productService, IProductImageService productImageService)
         {
             _productService = productService;
+            _productImageService = productImageService;
         }
 
         // GET: api/product
@@ -40,8 +42,28 @@ namespace customer.management.api.Controllers
             }
         }
 
+        // POST: api/product/upload-image (must stay above {id} routes)
+        [HttpPost("upload-image")]
+        [RequestSizeLimit(2 * 1024 * 1024)]
+        public async Task<ActionResult<object>> UploadProductImage(IFormFile image)
+        {
+            try
+            {
+                var imageUrl = await _productImageService.SaveProductImageAsync(image);
+                return Ok(new { imageUrl });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while uploading the image", details = ex.Message });
+            }
+        }
+
         // GET: api/product/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         public async Task<ActionResult<ProductDto>> GetProduct(Guid id)
         {
             try
@@ -86,7 +108,7 @@ namespace customer.management.api.Controllers
         }
 
         // PUT: api/product/5
-        [HttpPut("{id}")]
+        [HttpPut("{id:guid}")]
         public async Task<ActionResult<ProductDto>> UpdateProduct(Guid id, CreateProductDto updateDto)
         {
             try
@@ -110,7 +132,7 @@ namespace customer.management.api.Controllers
         }
 
         // DELETE: api/product/5
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
             try

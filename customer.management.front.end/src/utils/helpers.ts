@@ -34,3 +34,24 @@ export const filterCustomersByEmail = (customers: Customer[], email: string): Cu
     customer.email?.toLowerCase()?.includes(lowerEmail) ?? false
   );
 };
+
+export const getApiOrigin = (): string => {
+  const baseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
+
+  return baseUrl.replace(/\/api\/?$/, '');
+};
+
+export const getProductImageUrl = (imageUrl?: string | null): string | null => {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+
+  const origin = getApiOrigin();
+  return `${origin}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};

@@ -133,7 +133,11 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Products' AND column_name='IsActive') THEN
         ALTER TABLE public."Products" RENAME COLUMN "IsActive" TO is_active;
     END IF;
-    
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Products' AND column_name='ImageUrl') THEN
+        ALTER TABLE public."Products" RENAME COLUMN "ImageUrl" TO image_url;
+    END IF;
+
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Products' AND column_name='CreatedAt') THEN
         ALTER TABLE public."Products" RENAME COLUMN "CreatedAt" TO created_at;
     END IF;

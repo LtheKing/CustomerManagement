@@ -18,6 +18,15 @@ namespace customer.management.api.Controllers
             _jwtTokenService = jwtTokenService;
         }
 
+        // SameSite=None requires Secure=true; Fly terminates TLS at the edge so Request.IsHttps can be false without forwarded headers
+        private static CookieOptions CreateAuthCookieOptions(DateTimeOffset expires) => new()
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = expires
+        };
+
         // GET: api/user
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
@@ -181,26 +190,11 @@ namespace customer.management.api.Controllers
                 // Save refresh token to database
                 await _userService.SaveRefreshTokenAsync(result.User.Id, refreshToken);
 
-                // Set HTTP-only cookies
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps, // Use HTTPS in production
-                    SameSite = SameSiteMode.None, // Required for cross-origin
-                    Expires = DateTimeOffset.UtcNow.AddMinutes(30) // Short-lived access token
-                };
+                Response.Cookies.Append("accessToken", accessToken,
+                    CreateAuthCookieOptions(DateTimeOffset.UtcNow.AddMinutes(30)));
 
-                Response.Cookies.Append("accessToken", accessToken, cookieOptions);
-
-                var refreshCookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTimeOffset.UtcNow.AddDays(7) // Long-lived refresh token
-                };
-
-                Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
+                Response.Cookies.Append("refreshToken", refreshToken,
+                    CreateAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(7)));
 
                 // Return user info only (tokens are in cookies)
                 return Ok(new { 
@@ -244,16 +238,8 @@ namespace customer.management.api.Controllers
 
                 var newAccessToken = _jwtTokenService.GenerateAccessToken(user);
 
-                // Set new access token cookie
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTimeOffset.UtcNow.AddMinutes(30)
-                };
-
-                Response.Cookies.Append("accessToken", newAccessToken, cookieOptions);
+                Response.Cookies.Append("accessToken", newAccessToken,
+                    CreateAuthCookieOptions(DateTimeOffset.UtcNow.AddMinutes(30)));
 
                 return Ok(new { message = "Token refreshed successfully" });
             }
@@ -277,17 +263,8 @@ namespace customer.management.api.Controllers
                     await _userService.RevokeRefreshTokenAsync(refreshToken);
                 }
 
-                // Clear cookies
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTimeOffset.UtcNow.AddDays(-1) // Expire immediately
-                };
-
-                Response.Cookies.Delete("accessToken");
-                Response.Cookies.Delete("refreshToken");
+                Response.Cookies.Delete("accessToken", CreateAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(-1)));
+                Response.Cookies.Delete("refreshToken", CreateAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(-1)));
 
                 return Ok(new { message = "Logout successful" });
             }

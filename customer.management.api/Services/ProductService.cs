@@ -9,10 +9,12 @@ namespace customer.management.api.Services
     public class ProductService : IProductService
     {
         private readonly CustomerManagementDbContext _context;
+        private readonly IProductImageService _productImageService;
 
-        public ProductService(CustomerManagementDbContext context)
+        public ProductService(CustomerManagementDbContext context, IProductImageService productImageService)
         {
             _context = context;
+            _productImageService = productImageService;
         }
 
         /// <summary>
@@ -94,6 +96,7 @@ namespace customer.management.api.Services
                 Price = createDto.Price.Value,
                 Stock = createDto.Stock ?? 0,
                 IsActive = createDto.IsActive ?? true,
+                ImageUrl = string.IsNullOrWhiteSpace(createDto.ImageUrl) ? null : createDto.ImageUrl.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -162,6 +165,16 @@ namespace customer.management.api.Services
                 product.IsActive = updateDto.IsActive.Value;
             }
 
+            if (updateDto.ImageUrl != null)
+            {
+                var newImageUrl = string.IsNullOrWhiteSpace(updateDto.ImageUrl) ? null : updateDto.ImageUrl.Trim();
+                if (!string.Equals(product.ImageUrl, newImageUrl, StringComparison.Ordinal))
+                {
+                    _productImageService.DeleteProductImage(product.ImageUrl);
+                    product.ImageUrl = newImageUrl;
+                }
+            }
+
             product.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -194,6 +207,7 @@ namespace customer.management.api.Services
                 throw new InvalidOperationException($"Cannot delete product '{product.Name}' because it is associated with sales transactions.");
             }
 
+            _productImageService.DeleteProductImage(product.ImageUrl);
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
 
@@ -214,7 +228,8 @@ namespace customer.management.api.Services
                 Stock = product.Stock,
                 IsActive = product.IsActive,
                 CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt
+                UpdatedAt = product.UpdatedAt,
+                ImageUrl = product.ImageUrl
             };
         }
     }

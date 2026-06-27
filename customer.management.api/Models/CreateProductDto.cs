@@ -22,6 +22,9 @@ namespace customer.management.api.Models
         public int? Stock { get; set; }
 
         public bool? IsActive { get; set; }
+
+        [MaxLength(500)]
+        public string? ImageUrl { get; set; }
     }
 }
 

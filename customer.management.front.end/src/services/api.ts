@@ -24,6 +24,18 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
 
+const mapProduct = (product: any): Product => ({
+  id: product.Id || product.id,
+  name: product.Name || product.name,
+  sku: product.SKU || product.sku || '',
+  price: product.Price || product.price,
+  stock: product.Stock || product.stock || 0,
+  isActive: product.IsActive ?? product.isActive ?? true,
+  imageUrl: product.ImageUrl ?? product.imageUrl ?? null,
+  createdAt: product.CreatedAt || product.createdAt || new Date().toISOString(),
+  updatedAt: product.UpdatedAt || product.updatedAt,
+});
+
 class ApiService {
   private isRefreshing = false;
   private refreshPromise: Promise<void> | null = null;
@@ -523,16 +535,7 @@ class ApiService {
       const result = await this.fetchData<any[]>(endpoint);
       
       // Convert PascalCase response to camelCase
-      return result.map((product: any) => ({
-        id: product.Id || product.id,
-        name: product.Name || product.name,
-        sku: product.SKU || product.sku || '',
-        price: product.Price || product.price,
-        stock: product.Stock || product.stock || 0,
-        isActive: product.IsActive ?? product.isActive ?? true,
-        createdAt: product.CreatedAt || product.createdAt || new Date().toISOString(),
-        updatedAt: product.UpdatedAt || product.updatedAt,
-      }));
+      return result.map((product: any) => mapProduct(product));
     } catch (error) {
       console.warn('Products endpoint not available', error);
       return [];
@@ -543,29 +546,50 @@ class ApiService {
     const result = await this.fetchData<any>(`/Product/${id}`);
     
     // Convert PascalCase response to camelCase
-    return {
-      id: result.Id || result.id,
-      name: result.Name || result.name,
-      sku: result.SKU || result.sku || '',
-      price: result.Price || result.price,
-      stock: result.Stock || result.stock || 0,
-      isActive: result.IsActive ?? result.isActive ?? true,
-      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
-      updatedAt: result.UpdatedAt || result.updatedAt,
-    };
+    return mapProduct(result);
   }
 
-  async createProduct(request: { name: string; sku: string; price: number; stock?: number; isActive?: boolean }): Promise<Product> {
+  async uploadProductImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`${API_BASE_URL}/Product/upload-image`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.imageUrl || result.ImageUrl;
+  }
+
+  async createProduct(request: { name: string; sku: string; price: number; stock?: number; isActive?: boolean; imageUrl?: string | null }): Promise<Product> {
     const requestBody = {
       Name: request.name,
       SKU: request.sku,
       Price: request.price,
       Stock: request.stock ?? 0,
       IsActive: request.isActive ?? true,
+      ImageUrl: request.imageUrl ?? null,
     };
 
     const response = await fetch(`${API_BASE_URL}/Product`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -587,28 +611,21 @@ class ApiService {
     }
 
     const result = await response.json();
-    return {
-      id: result.Id || result.id,
-      name: result.Name || result.name,
-      sku: result.SKU || result.sku || '',
-      price: result.Price || result.price,
-      stock: result.Stock || result.stock || 0,
-      isActive: result.IsActive ?? result.isActive ?? true,
-      createdAt: result.CreatedAt || result.createdAt || new Date().toISOString(),
-      updatedAt: result.UpdatedAt || result.updatedAt,
-    };
+    return mapProduct(result);
   }
 
-  async updateProduct(id: string, request: { name?: string; sku?: string; price?: number; stock?: number; isActive?: boolean }): Promise<void> {
+  async updateProduct(id: string, request: { name?: string; sku?: string; price?: number; stock?: number; isActive?: boolean; imageUrl?: string | null }): Promise<void> {
     const requestBody: any = {};
     if (request.name !== undefined) requestBody.Name = request.name;
     if (request.sku !== undefined) requestBody.SKU = request.sku;
     if (request.price !== undefined) requestBody.Price = request.price;
     if (request.stock !== undefined) requestBody.Stock = request.stock;
     if (request.isActive !== undefined) requestBody.IsActive = request.isActive;
+    if (request.imageUrl !== undefined) requestBody.ImageUrl = request.imageUrl;
 
     const response = await fetch(`${API_BASE_URL}/Product/${id}`, {
       method: 'PUT',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },

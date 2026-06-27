@@ -44,7 +44,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 # Change ownership of the application files
-RUN chown -R dotnetuser:dotnetuser /app
+RUN mkdir -p /app/wwwroot/uploads/products && chown -R dotnetuser:dotnetuser /app
 
 # Switch to the non-root user
 USER dotnetuser

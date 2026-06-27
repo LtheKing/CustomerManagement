@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using customer.management.data.entity.DbContext;
@@ -157,8 +158,17 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.HttpOnly = HttpOnlyPolicy.Always;
-    options.Secure = CookieSecurePolicy.SameAsRequest; // Use Always in production with HTTPS
-    // Note: SameSite is set per-cookie in CookieOptions, not in CookiePolicyOptions
+    options.Secure = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+
+// Fly.io / Render terminate TLS at the edge; trust X-Forwarded-Proto so Request.IsHttps is correct
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 //
@@ -238,6 +248,7 @@ builder.Services.AddAuthorization(options =>
 // ----------------------------------------------------
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductImageService, ProductImageService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -263,6 +274,11 @@ builder.Services.AddSwaggerGen();
 // ----------------------------------------------------
 var app = builder.Build();
 
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(Path.Combine(webRootPath, "uploads", "products"));
+
+app.UseForwardedHeaders();
+
 // Enable CORS FIRST - must be before UseRouting for preflight requests
 app.UseCors("AllowReactApp");
 
@@ -284,6 +300,8 @@ if (app.Environment.IsDevelopment())
 // Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseStaticFiles();
 
 //
 // ----------------------------------------------------

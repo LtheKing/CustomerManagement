@@ -5,6 +5,7 @@ export interface Product {
   price: number;
   stock: number;
   isActive: boolean;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

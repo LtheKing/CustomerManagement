@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, ReactNode } from "react";
 import "../assets/components-styles/GenericForm.css";
 
 export interface FormField {
@@ -41,6 +41,7 @@ export interface GenericFormProps<T extends Record<string, any>> {
   onFieldChange?: (fieldName: string, value: any, formData: Record<string, any>) => void;
   computedFields?: (formData: Record<string, any>) => Record<string, any>;
   twoColumn?: boolean; // Enable two-column layout
+  sidebar?: ReactNode; // Optional sidebar content (e.g. image upload)
 }
 
 export function GenericForm<T extends Record<string, any>>({
@@ -58,14 +59,23 @@ export function GenericForm<T extends Record<string, any>>({
   onFieldChange,
   computedFields,
   twoColumn = false,
+  sidebar,
 }: GenericFormProps<T>) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const wasOpenRef = useRef(false);
 
-  // Initialize form data from initialValues
+  // Initialize form only when the modal opens, not on every parent re-render
   useEffect(() => {
+    const justOpened = isOpen && !wasOpenRef.current;
+    wasOpenRef.current = isOpen;
+
+    if (!isOpen || !justOpened) {
+      return;
+    }
+
     let initial: Record<string, any> = {};
     if (initialValues) {
       fields.forEach((field) => {
@@ -86,7 +96,7 @@ export function GenericForm<T extends Record<string, any>>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [initialValues, isOpen, fields]);
+  }, [initialValues, isOpen, fields, computedFields]);
 
   const validateField = (field: FormField, value: any): string | null => {
     // Required validation
@@ -212,7 +222,7 @@ export function GenericForm<T extends Record<string, any>>({
 
   return (
     <div className="modal-overlay" onClick={handleCancel}>
-      <div className={`modal-content ${twoColumn ? 'wide' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-content ${twoColumn ? 'wide compact-modal' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{formTitle}</h2>
           <button className="modal-close" onClick={handleCancel} aria-label="Close">
@@ -227,7 +237,10 @@ export function GenericForm<T extends Record<string, any>>({
             </div>
           )}
 
-          <div className={`form-fields ${twoColumn ? 'two-column' : ''}`}>
+          <div className={`form-body ${sidebar ? 'with-sidebar' : ''}`}>
+            {sidebar && <div className="form-sidebar">{sidebar}</div>}
+
+            <div className={`form-fields ${twoColumn ? 'two-column' : ''}`}>
             {fields.map((field) => (
               <div key={field.name} className="form-field">
                 <label htmlFor={field.name}>
@@ -315,6 +328,7 @@ export function GenericForm<T extends Record<string, any>>({
                 )}
               </div>
             ))}
+            </div>
           </div>
 
           <div className="form-actions">

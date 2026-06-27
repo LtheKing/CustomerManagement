@@ -1,18 +1,68 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { GenericForm, FormField } from "../components/GenericForm";
+import { ProductImageUpload } from "../components/ProductImageUpload";
 import { apiService } from "../services/api";
 import { Product } from "../types";
+import { getProductImageUrl } from "../utils/helpers";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 import "../assets/page-styles/Expense.css";
 import "../assets/page-styles/Product.css";
+
+const PRODUCT_FORM_FIELDS: FormField[] = [
+  {
+    name: "name",
+    label: "Product Name",
+    type: "text",
+    required: true,
+    placeholder: "Enter product name",
+  },
+  {
+    name: "sku",
+    label: "SKU",
+    type: "text",
+    required: true,
+    placeholder: "Enter SKU",
+  },
+  {
+    name: "price",
+    label: "Price",
+    type: "number",
+    required: true,
+    placeholder: "0.00",
+    min: 0.01,
+    step: 0.01,
+  },
+  {
+    name: "stock",
+    label: "Stock",
+    type: "number",
+    required: true,
+    placeholder: "0",
+    min: 0,
+    step: 1,
+  },
+  {
+    name: "isActive",
+    label: "Active",
+    type: "select",
+    required: false,
+    options: [
+      { value: "true", label: "Yes" },
+      { value: "false", label: "No" },
+    ],
+  },
+];
 
 export const ProductPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   
   // Filter states
   const [nameFilter, setNameFilter] = useState<string>("");
@@ -39,6 +89,60 @@ export const ProductPage = () => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOnly]);
+
+  const resetImageState = useCallback((product?: Product | null) => {
+    setImagePreviewUrl((currentPreview) => {
+      if (currentPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentPreview);
+      }
+      return product?.imageUrl ? getProductImageUrl(product.imageUrl) : null;
+    });
+    setPendingImageFile(null);
+    setImageRemoved(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isFormOpen) {
+      return;
+    }
+
+    resetImageState(editingProduct);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFormOpen, editingProduct?.id]);
+
+  const handleImageSelect = useCallback((file: File, previewUrl: string) => {
+    setImagePreviewUrl((currentPreview) => {
+      if (currentPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentPreview);
+      }
+      return previewUrl;
+    });
+    setPendingImageFile(file);
+    setImageRemoved(false);
+  }, []);
+
+  const handleImageClear = useCallback(() => {
+    setImagePreviewUrl((currentPreview) => {
+      if (currentPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentPreview);
+      }
+      return null;
+    });
+    setPendingImageFile(null);
+    setImageRemoved(true);
+  }, []);
+
+  const resolveImageUrlForSubmit = async (): Promise<string | null | undefined> => {
+    if (pendingImageFile) {
+      return apiService.uploadProductImage(pendingImageFile);
+    }
+
+    if (imageRemoved) {
+      return null;
+    }
+
+    return undefined;
+  };
 
   const handleFilter = () => {
     fetchProducts();
@@ -127,52 +231,33 @@ export const ProductPage = () => {
     return true;
   });
 
-  const getProductFormFields = (): FormField[] => {
-    return [
-      {
-        name: "name",
-        label: "Product Name",
-        type: "text",
-        required: true,
-        placeholder: "Enter product name",
-      },
-      {
-        name: "sku",
-        label: "SKU",
-        type: "text",
-        required: true,
-        placeholder: "Enter SKU",
-      },
-      {
-        name: "price",
-        label: "Price",
-        type: "number",
-        required: true,
-        placeholder: "0.00",
-        min: 0.01,
-        step: 0.01,
-      },
-      {
-        name: "stock",
-        label: "Stock",
-        type: "number",
-        required: true,
-        placeholder: "0",
-        min: 0,
-        step: 1,
-      },
-      {
-        name: "isActive",
-        label: "Active",
-        type: "select",
-        required: false,
-        options: [
-          { value: "true", label: "Yes" },
-          { value: "false", label: "No" },
-        ],
-      },
-    ];
-  };
+  const productFormInitialValues = useMemo(
+    () =>
+      editingProduct
+        ? {
+            name: editingProduct.name,
+            sku: editingProduct.sku,
+            price: editingProduct.price,
+            stock: editingProduct.stock,
+            isActive: editingProduct.isActive ? "true" : "false",
+          }
+        : {
+            stock: 0,
+            isActive: "true",
+          },
+    [editingProduct]
+  );
+
+  const productFormSidebar = useMemo(
+    () => (
+      <ProductImageUpload
+        previewUrl={imagePreviewUrl}
+        onFileSelect={handleImageSelect}
+        onClear={handleImageClear}
+      />
+    ),
+    [imagePreviewUrl, handleImageSelect, handleImageClear]
+  );
 
   const handleProductSubmit = async (formData: Record<string, any>): Promise<void> => {
     const name = formData.name as string;
@@ -197,6 +282,8 @@ export const ProductPage = () => {
       throw new Error("Stock cannot be negative");
     }
 
+    const imageUrl = await resolveImageUrlForSubmit();
+
     if (editingProduct) {
       // Update existing product
       await apiService.updateProduct(editingProduct.id, {
@@ -205,6 +292,7 @@ export const ProductPage = () => {
         price,
         stock,
         isActive,
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
       });
     } else {
       // Create new product
@@ -214,12 +302,14 @@ export const ProductPage = () => {
         price,
         stock,
         isActive,
+        imageUrl: imageUrl ?? null,
       });
     }
   };
 
   const handleProductSuccess = () => {
     setEditingProduct(null);
+    resetImageState();
     fetchProducts();
   };
 
@@ -245,6 +335,12 @@ export const ProductPage = () => {
   const handleCreate = () => {
     setEditingProduct(null);
     setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingProduct(null);
+    resetImageState();
   };
 
   return (
@@ -384,6 +480,7 @@ export const ProductPage = () => {
               <table className="sales-report-table product-table">
                 <thead>
                   <tr>
+                    <th className="product-col-image">Image</th>
                     <th className="product-col-name">Name</th>
                     <th className="product-col-sku">SKU</th>
                     <th className="text-right product-col-price">Price</th>
@@ -396,7 +493,7 @@ export const ProductPage = () => {
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="product-empty-state">
+                      <td colSpan={8} className="product-empty-state">
                         <div className="product-empty-state-content">
                           <span className="product-empty-state-icon">📦</span>
                           <span>No products found</span>
@@ -406,6 +503,17 @@ export const ProductPage = () => {
                   ) : (
                     filteredProducts.map((product) => (
                       <tr key={product.id} className="product-table-row">
+                        <td className="product-cell-image">
+                          {product.imageUrl ? (
+                            <img
+                              src={getProductImageUrl(product.imageUrl) || undefined}
+                              alt={product.name}
+                              className="product-table-thumbnail"
+                            />
+                          ) : (
+                            <span className="product-table-thumbnail-placeholder">📦</span>
+                          )}
+                        </td>
                         <td className="product-cell-name">{product.name}</td>
                         <td className="product-cell-sku">{product.sku}</td>
                         <td className="text-right product-cell-price">
@@ -458,24 +566,14 @@ export const ProductPage = () => {
 
       <GenericForm
         title={editingProduct ? "Edit Product" : "Create New Product"}
-        fields={getProductFormFields()}
+        fields={PRODUCT_FORM_FIELDS}
+        twoColumn={true}
+        sidebar={productFormSidebar}
         mode={editingProduct ? "edit" : "create"}
-        initialValues={editingProduct ? {
-          name: editingProduct.name,
-          sku: editingProduct.sku,
-          price: editingProduct.price,
-          stock: editingProduct.stock,
-          isActive: editingProduct.isActive ? "true" : "false",
-        } : {
-          stock: 0,
-          isActive: "true",
-        }}
+        initialValues={productFormInitialValues}
         onSubmit={handleProductSubmit}
         onSuccess={handleProductSuccess}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingProduct(null);
-        }}
+        onClose={handleCloseForm}
         isOpen={isFormOpen}
         submitLabel={editingProduct ? "Update Product" : "Create Product"}
       />
