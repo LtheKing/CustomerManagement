@@ -15,6 +15,16 @@ interface SalesTransactionModalProps {
   isLoading?: boolean;
 }
 
+interface CartItem {
+  productId: string;
+  productName: string;
+  imageUrl?: string | null;
+  unitPrice: number;
+  quantity: number;
+  amount: number;
+  maxStock: number;
+}
+
 const DEFAULT_CUSTOMER_NAME = "Walk-in Customer";
 
 const calculateAmount = (price: number, quantity: number): number => {
@@ -32,9 +42,11 @@ export function SalesTransactionModal({
 }: SalesTransactionModalProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState(DEFAULT_CUSTOMER_NAME);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
 
   const activeProducts = useMemo(
     () => products.filter((product) => product.isActive && product.stock > 0),
@@ -46,7 +58,23 @@ export function SalesTransactionModal({
     [activeProducts, selectedProductId]
   );
 
-  const totalAmount = selectedProduct ? calculateAmount(selectedProduct.price, quantity) : 0;
+  const lineTotal = selectedProduct ? calculateAmount(selectedProduct.price, quantity) : 0;
+  const cartGrandTotal = useMemo(
+    () => cart.reduce((sum, item) => sum + item.amount, 0),
+    [cart]
+  );
+  const cartItemCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.quantity, 0),
+    [cart]
+  );
+
+  const getCartQuantityForProduct = (productId: string): number =>
+    cart
+      .filter((item) => item.productId === productId)
+      .reduce((sum, item) => sum + item.quantity, 0);
+
+  const getAvailableStock = (product: Product): number =>
+    product.stock - getCartQuantityForProduct(product.id);
 
   useEffect(() => {
     if (!isOpen) {
@@ -55,14 +83,22 @@ export function SalesTransactionModal({
 
     setSelectedProductId(null);
     setQuantity(1);
+    setCart([]);
     setCustomerName(DEFAULT_CUSTOMER_NAME);
     setSubmitError(null);
+    setCartError(null);
     setIsSubmitting(false);
   }, [isOpen]);
 
   const handleProductSelect = (productId: string) => {
+    const product = activeProducts.find((item) => item.id === productId);
+    if (!product || getAvailableStock(product) <= 0) {
+      return;
+    }
+
     setSelectedProductId(productId);
     setQuantity(1);
+    setCartError(null);
     setSubmitError(null);
   };
 
@@ -71,22 +107,90 @@ export function SalesTransactionModal({
       return;
     }
 
-    const maxQuantity = selectedProduct.stock;
+    const maxQuantity = getAvailableStock(selectedProduct);
     const clampedQuantity = Math.min(Math.max(1, nextQuantity), maxQuantity);
     setQuantity(clampedQuantity);
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedProduct) {
+      setCartError("Please select a product.");
+      return;
+    }
+
+    const availableStock = getAvailableStock(selectedProduct);
+    if (quantity <= 0 || quantity > availableStock) {
+      setCartError(`Quantity must be between 1 and ${availableStock}.`);
+      return;
+    }
+
+    const amount = calculateAmount(selectedProduct.price, quantity);
+    setCart((currentCart) => {
+      const existingIndex = currentCart.findIndex((item) => item.productId === selectedProduct.id);
+
+      if (existingIndex >= 0) {
+        const updatedCart = [...currentCart];
+        const newQuantity = updatedCart[existingIndex].quantity + quantity;
+        updatedCart[existingIndex] = {
+          ...updatedCart[existingIndex],
+          quantity: newQuantity,
+          amount: calculateAmount(selectedProduct.price, newQuantity),
+        };
+        return updatedCart;
+      }
+
+      return [
+        ...currentCart,
+        {
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          imageUrl: selectedProduct.imageUrl,
+          unitPrice: selectedProduct.price,
+          quantity,
+          amount,
+          maxStock: selectedProduct.stock,
+        },
+      ];
+    });
+
+    setSelectedProductId(null);
+    setQuantity(1);
+    setCartError(null);
+    setSubmitError(null);
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCart((currentCart) => currentCart.filter((item) => item.productId !== productId));
+    setCartError(null);
+    setSubmitError(null);
+  };
+
+  const handleCartQuantityChange = (productId: string, nextQuantity: number) => {
+    setCart((currentCart) =>
+      currentCart.map((item) => {
+        if (item.productId !== productId) {
+          return item;
+        }
+
+        const clampedQuantity = Math.min(Math.max(1, nextQuantity), item.maxStock);
+        return {
+          ...item,
+          quantity: clampedQuantity,
+          amount: calculateAmount(item.unitPrice, clampedQuantity),
+        };
+      })
+    );
+    setCartError(null);
+    setSubmitError(null);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitError(null);
+    setCartError(null);
 
-    if (!selectedProduct) {
-      setSubmitError("Please select a product.");
-      return;
-    }
-
-    if (quantity <= 0 || quantity > selectedProduct.stock) {
-      setSubmitError(`Quantity must be between 1 and ${selectedProduct.stock}.`);
+    if (cart.length === 0) {
+      setSubmitError("Add at least one product to the cart.");
       return;
     }
 
@@ -100,19 +204,21 @@ export function SalesTransactionModal({
     const createdBy = currentUser?.id || customers[0]?.createdBy || "11111111-1111-1111-1111-111111111111";
     const cashierName = currentUser?.username || "Cashier";
 
-    const request: CreateSalesTransactionRequest = {
-      customerName: trimmedCustomerName,
-      productId: selectedProduct.id,
-      quantity,
-      amount: totalAmount,
-      cashierName,
-      saleDate: new Date().toISOString(),
-      createdBy,
-    };
-
     setIsSubmitting(true);
     try {
-      await apiService.createSalesTransaction(request);
+      for (const item of cart) {
+        const request: CreateSalesTransactionRequest = {
+          customerName: trimmedCustomerName,
+          productId: item.productId,
+          quantity: item.quantity,
+          amount: item.amount,
+          cashierName,
+          saleDate: new Date().toISOString(),
+          createdBy,
+        };
+        await apiService.createSalesTransaction(request);
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -126,9 +232,18 @@ export function SalesTransactionModal({
     return null;
   }
 
+  const modalClassName = [
+    "modal-content",
+    "sales-transaction-modal",
+    selectedProduct ? "has-selection" : "",
+    cart.length > 0 ? "has-cart" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal-content sales-transaction-modal ${selectedProduct ? "has-selection" : ""}`} onClick={(event) => event.stopPropagation()}>
+      <div className={modalClassName} onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <h2>Create Sales Transaction</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -141,108 +256,200 @@ export function SalesTransactionModal({
             {submitError && <div className="form-error-message">{submitError}</div>}
 
             <section className="sales-transaction-section">
-            <div className="sales-transaction-section-header">
-              <h3>1. Pick a product</h3>
-              <span>{activeProducts.length} available</span>
-            </div>
+              <div className="sales-transaction-section-header">
+                <h3>1. Pick a product</h3>
+                <span>{activeProducts.length} available</span>
+              </div>
 
-            {isLoading ? (
-              <div className="sales-transaction-loading">Loading products...</div>
-            ) : activeProducts.length === 0 ? (
-              <div className="sales-transaction-empty">No active products with stock available.</div>
-            ) : (
-              <div className="product-picker-grid">
-                {activeProducts.map((product) => {
-                  const isSelected = product.id === selectedProductId;
-                  const imageUrl = getProductImageUrl(product.imageUrl);
+              {isLoading ? (
+                <div className="sales-transaction-loading">Loading products...</div>
+              ) : activeProducts.length === 0 ? (
+                <div className="sales-transaction-empty">No active products with stock available.</div>
+              ) : (
+                <div className="product-picker-grid">
+                  {activeProducts.map((product) => {
+                    const isSelected = product.id === selectedProductId;
+                    const availableStock = getAvailableStock(product);
+                    const imageUrl = getProductImageUrl(product.imageUrl);
+                    const isOutOfStock = availableStock <= 0;
 
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      className={`product-picker-card ${isSelected ? "selected" : ""}`}
-                      onClick={() => handleProductSelect(product.id)}
-                    >
-                      <div className="product-picker-image-wrap">
-                        {imageUrl ? (
-                          <img src={imageUrl} alt={product.name} className="product-picker-image" />
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        className={`product-picker-card ${isSelected ? "selected" : ""} ${isOutOfStock ? "out-of-stock" : ""}`}
+                        onClick={() => handleProductSelect(product.id)}
+                        disabled={isOutOfStock || isSubmitting}
+                      >
+                        <div className="product-picker-image-wrap">
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={product.name} className="product-picker-image" />
+                          ) : (
+                            <span className="product-picker-image-placeholder">📦</span>
+                          )}
+                        </div>
+                        <div className="product-picker-info">
+                          <span className="product-picker-name">{product.name}</span>
+                          <span className="product-picker-price">{formatCurrency(product.price)}</span>
+                          <span className="product-picker-stock">
+                            {isOutOfStock ? "In cart" : `Stock: ${availableStock}`}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {selectedProduct && (
+              <section className="sales-transaction-section sales-transaction-checkout">
+                <div className="sales-transaction-section-header">
+                  <h3>2. Set quantity</h3>
+                </div>
+
+                <div className="sales-transaction-selected-product">
+                  <div className="sales-transaction-selected-image-wrap">
+                    {getProductImageUrl(selectedProduct.imageUrl) ? (
+                      <img
+                        src={getProductImageUrl(selectedProduct.imageUrl) || undefined}
+                        alt={selectedProduct.name}
+                        className="sales-transaction-selected-image"
+                      />
+                    ) : (
+                      <span className="product-picker-image-placeholder">📦</span>
+                    )}
+                  </div>
+                  <div className="sales-transaction-selected-details">
+                    <strong>{selectedProduct.name}</strong>
+                    <span>{formatCurrency(selectedProduct.price)} each</span>
+                  </div>
+                </div>
+
+                <div className="sales-transaction-checkout-row">
+                  <div className="sales-transaction-quantity-row">
+                    <label htmlFor="sales-quantity">Quantity</label>
+                    <div className="sales-transaction-quantity-controls">
+                      <button
+                        type="button"
+                        className="quantity-btn"
+                        onClick={() => handleQuantityChange(quantity - 1)}
+                        disabled={quantity <= 1 || isSubmitting}
+                      >
+                        −
+                      </button>
+                      <input
+                        id="sales-quantity"
+                        type="number"
+                        min={1}
+                        max={getAvailableStock(selectedProduct)}
+                        value={quantity}
+                        onChange={(event) => handleQuantityChange(Number(event.target.value))}
+                        disabled={isSubmitting}
+                      />
+                      <button
+                        type="button"
+                        className="quantity-btn"
+                        onClick={() => handleQuantityChange(quantity + 1)}
+                        disabled={quantity >= getAvailableStock(selectedProduct) || isSubmitting}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sales-transaction-total">
+                    <span>Line total</span>
+                    <strong>{formatCurrency(lineTotal)}</strong>
+                  </div>
+                </div>
+
+                {cartError && <div className="sales-transaction-cart-error">{cartError}</div>}
+
+                <button
+                  type="button"
+                  className="btn-add-to-cart"
+                  onClick={handleAddToCart}
+                  disabled={isSubmitting}
+                >
+                  Add to Cart
+                </button>
+              </section>
+            )}
+
+            <section className="sales-transaction-section sales-transaction-cart-section">
+              <div className="sales-transaction-section-header">
+                <h3>3. Cart</h3>
+                <span>{cartItemCount} item{cartItemCount === 1 ? "" : "s"}</span>
+              </div>
+
+              {cart.length === 0 ? (
+                <div className="sales-transaction-cart-empty">No items yet. Pick a product and add it to the cart.</div>
+              ) : (
+                <div className="sales-transaction-cart-list">
+                  {cart.map((item) => (
+                    <div key={item.productId} className="sales-transaction-cart-item">
+                      <div className="sales-transaction-cart-item-image-wrap">
+                        {getProductImageUrl(item.imageUrl) ? (
+                          <img
+                            src={getProductImageUrl(item.imageUrl) || undefined}
+                            alt={item.productName}
+                            className="sales-transaction-cart-item-image"
+                          />
                         ) : (
                           <span className="product-picker-image-placeholder">📦</span>
                         )}
                       </div>
-                      <div className="product-picker-info">
-                        <span className="product-picker-name">{product.name}</span>
-                        <span className="product-picker-price">{formatCurrency(product.price)}</span>
-                        <span className="product-picker-stock">Stock: {product.stock}</span>
+
+                      <div className="sales-transaction-cart-item-details">
+                        <strong>{item.productName}</strong>
+                        <span>{formatCurrency(item.unitPrice)} each</span>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
 
-          {selectedProduct && (
-            <section className="sales-transaction-section sales-transaction-checkout">
-              <div className="sales-transaction-section-header">
-                <h3>2. Enter quantity</h3>
-              </div>
-
-              <div className="sales-transaction-selected-product">
-                <div className="sales-transaction-selected-image-wrap">
-                  {getProductImageUrl(selectedProduct.imageUrl) ? (
-                    <img
-                      src={getProductImageUrl(selectedProduct.imageUrl) || undefined}
-                      alt={selectedProduct.name}
-                      className="sales-transaction-selected-image"
-                    />
-                  ) : (
-                    <span className="product-picker-image-placeholder">📦</span>
-                  )}
+                      <div className="sales-transaction-cart-item-controls">
+                        <div className="sales-transaction-quantity-controls">
+                          <button
+                            type="button"
+                            className="quantity-btn"
+                            onClick={() => handleCartQuantityChange(item.productId, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || isSubmitting}
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={item.maxStock}
+                            value={item.quantity}
+                            onChange={(event) =>
+                              handleCartQuantityChange(item.productId, Number(event.target.value))
+                            }
+                            disabled={isSubmitting}
+                            aria-label={`Quantity for ${item.productName}`}
+                          />
+                          <button
+                            type="button"
+                            className="quantity-btn"
+                            onClick={() => handleCartQuantityChange(item.productId, item.quantity + 1)}
+                            disabled={item.quantity >= item.maxStock || isSubmitting}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <strong className="sales-transaction-cart-item-total">{formatCurrency(item.amount)}</strong>
+                        <button
+                          type="button"
+                          className="sales-transaction-cart-remove"
+                          onClick={() => handleRemoveFromCart(item.productId)}
+                          disabled={isSubmitting}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="sales-transaction-selected-details">
-                  <strong>{selectedProduct.name}</strong>
-                  <span>{formatCurrency(selectedProduct.price)} each</span>
-                </div>
-              </div>
-
-              <div className="sales-transaction-checkout-row">
-                <div className="sales-transaction-quantity-row">
-                  <label htmlFor="sales-quantity">Quantity</label>
-                  <div className="sales-transaction-quantity-controls">
-                    <button
-                      type="button"
-                      className="quantity-btn"
-                      onClick={() => handleQuantityChange(quantity - 1)}
-                      disabled={quantity <= 1 || isSubmitting}
-                    >
-                      −
-                    </button>
-                    <input
-                      id="sales-quantity"
-                      type="number"
-                      min={1}
-                      max={selectedProduct.stock}
-                      value={quantity}
-                      onChange={(event) => handleQuantityChange(Number(event.target.value))}
-                      disabled={isSubmitting}
-                    />
-                    <button
-                      type="button"
-                      className="quantity-btn"
-                      onClick={() => handleQuantityChange(quantity + 1)}
-                      disabled={quantity >= selectedProduct.stock || isSubmitting}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                <div className="sales-transaction-total">
-                  <span>Total</span>
-                  <strong>{formatCurrency(totalAmount)}</strong>
-                </div>
-              </div>
+              )}
 
               <div className="sales-transaction-customer">
                 <label htmlFor="sales-customer">Customer</label>
@@ -262,9 +469,14 @@ export function SalesTransactionModal({
                   ))}
                 </datalist>
               </div>
-            </section>
-          )}
 
+              {cart.length > 0 && (
+                <div className="sales-transaction-grand-total">
+                  <span>Grand total</span>
+                  <strong>{formatCurrency(cartGrandTotal)}</strong>
+                </div>
+              )}
+            </section>
           </div>
 
           <div className="form-actions sales-transaction-footer">
@@ -274,9 +486,9 @@ export function SalesTransactionModal({
             <button
               type="submit"
               className="btn-submit"
-              disabled={isSubmitting || !selectedProduct}
+              disabled={isSubmitting || cart.length === 0}
             >
-              {isSubmitting ? "Saving..." : "Create Transaction"}
+              {isSubmitting ? "Saving..." : `Complete Sale (${cartItemCount})`}
             </button>
           </div>
         </form>
