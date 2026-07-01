@@ -1,4 +1,15 @@
 /* Expense Page Styles */
+.finance-section-header {
+  margin-bottom: 1rem;
+}
+
+.finance-section-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
 .expense-actions-row {
     margin-bottom: 1rem;
     display: flex;

@@ -2,13 +2,19 @@ import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { GenericForm, FormField } from "../components/GenericForm";
 import { apiService } from "../services/api";
-import { PagedResult } from "../types";
+import { CashFlow, CreateCashFlowRequest, PagedResult } from "../types";
 import type { Expense as ExpenseType } from "../types";
+import { isAdmin } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 import "../assets/page-styles/Expense.css";
+import "../assets/page-styles/Cashier.css";
 
 export const Expense = () => {
+  const [capitalCash, setCapitalCash] = useState<number>(0);
+  const [_capitalCashId, setCapitalCashId] = useState<string>("");
+  const [isCapitalCashFormOpen, setIsCapitalCashFormOpen] = useState(false);
+  const [isCapitalCashLoading, setIsCapitalCashLoading] = useState(true);
   const [pagedResult, setPagedResult] = useState<PagedResult<ExpenseType>>({
     data: [],
     totalCount: 0,
@@ -36,6 +42,107 @@ export const Expense = () => {
   const [pageCache, setPageCache] = useState<Map<string, PagedResult<ExpenseType>>>(new Map());
   const [cacheTimestamp, setCacheTimestamp] = useState<number>(Date.now());
   const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache expiry
+
+  useEffect(() => {
+    const fetchCapitalCash = async () => {
+      try {
+        setIsCapitalCashLoading(true);
+        const data = await apiService.getCapitalCash();
+        const balance = typeof data?.balance === "number" ? data.balance : 0;
+        setCapitalCash(balance);
+        setCapitalCashId(data?.id || "");
+      } catch (error) {
+        console.error("Error fetching capital cash:", error);
+        setCapitalCash(0);
+      } finally {
+        setIsCapitalCashLoading(false);
+      }
+    };
+
+    fetchCapitalCash();
+  }, []);
+
+  const refreshCapitalCash = async () => {
+    try {
+      const data = await apiService.getCapitalCash();
+      const balance = typeof data?.balance === "number" ? data.balance : 0;
+      setCapitalCash(balance);
+      setCapitalCashId(data?.id || "");
+    } catch (error) {
+      console.error("Error refreshing capital cash:", error);
+      setCapitalCash(0);
+    }
+  };
+
+  const getCashFlowFields = (): FormField[] => [
+    {
+      name: "flowType",
+      label: "Flow Type",
+      type: "select",
+      required: true,
+      options: [
+        { value: "ADJUSTMENT_IN", label: "ADJUSTMENT_IN" },
+        { value: "ADJUSTMENT_OUT", label: "ADJUSTMENT_OUT" },
+      ],
+    },
+    {
+      name: "amount",
+      label: "Amount",
+      type: "number",
+      required: true,
+      placeholder: "Enter amount",
+      min: 0,
+      step: 0.01,
+      validation: (value) => {
+        if (value === null || value === undefined || value === "") {
+          return "Amount is required";
+        }
+        const numValue = Number(value);
+        if (isNaN(numValue)) {
+          return "Please enter a valid number";
+        }
+        if (numValue <= 0) {
+          return "Amount must be greater than 0";
+        }
+        return null;
+      },
+    },
+    {
+      name: "info",
+      label: "Info",
+      type: "text",
+      required: false,
+      placeholder: "Enter additional information",
+    },
+    {
+      name: "flowDate",
+      label: "Flow Date",
+      type: "date",
+      required: true,
+      validation: (value) => {
+        if (!value) {
+          return "Flow date is required";
+        }
+        return null;
+      },
+    },
+  ];
+
+  const handleCapitalCashSubmit = async (data: Partial<CashFlow>) => {
+    const flowDate = data.flowDate
+      ? new Date(data.flowDate + "T00:00:00").toISOString()
+      : new Date().toISOString();
+
+    const request: CreateCashFlowRequest = {
+      flowType: data.flowType || "",
+      referenceId: null,
+      amount: Number(data.amount),
+      info: data.info || "",
+      flowDate,
+    };
+
+    return apiService.createCashFlow(request);
+  };
 
   const getCacheKey = (page: number): string => {
     return `${page}-${pageSize}-${startDate}-${endDate}-${description}-${minAmount}-${maxAmount}`;
@@ -270,11 +377,29 @@ export const Expense = () => {
   return (
     <div className="dashboard-content">
       <div className="dashboard-header">
-        <h1>Expense Management</h1>
-        <p>View and manage all business expenses.</p>
+        <h1>Finance</h1>
+        <p>Manage capital cash and business expenses.</p>
+      </div>
+
+      <div className="cashflow-container">
+        <h3>Capital Cash</h3>
+        <div>
+          <input
+            type="number"
+            placeholder="Enter amount"
+            disabled
+            value={isCapitalCashLoading ? "Loading..." : (capitalCash ?? 0).toFixed(2)}
+          />
+          <button onClick={() => setIsCapitalCashFormOpen(true)} disabled={isCapitalCashLoading || !isAdmin()}>
+            Adjust
+          </button>
+        </div>
       </div>
       
       <div className="sales-report-container">
+        <div className="finance-section-header">
+          <h3>Expenses</h3>
+        </div>
         <div className="expense-actions-row">
           <button 
             className="new-expense-btn" 
@@ -463,6 +588,24 @@ export const Expense = () => {
           </>
         )}
       </div>
+
+      <GenericForm<CashFlow>
+        isOpen={isCapitalCashFormOpen}
+        onClose={() => setIsCapitalCashFormOpen(false)}
+        fields={getCashFlowFields()}
+        mode="create"
+        initialValues={{
+          id: "",
+          flowType: "ADJUSTMENT_IN",
+          amount: 0,
+          info: "",
+          flowDate: new Date().toISOString().split("T")[0],
+        }}
+        onSubmit={handleCapitalCashSubmit}
+        onSuccess={refreshCapitalCash}
+        title="Adjust Capital Cash"
+        submitLabel="Create Cash Flow"
+      />
 
       <GenericForm
         title="Create New Expense"

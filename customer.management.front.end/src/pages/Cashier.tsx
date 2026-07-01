@@ -1,229 +1,55 @@
 import { useState, useEffect } from "react";
-import { GenericForm, FormField } from "../components/GenericForm";
-import { SalesTransactionModal } from "../components/SalesTransactionModal";
+import { SalesTransactionForm } from "../components/SalesTransactionForm";
 import { apiService } from "../services/api";
-import { CashFlow, CreateCashFlowRequest, Customer, Product } from "../types";
-import { isAdmin } from "../utils/auth";
+import { Customer, Product } from "../types";
 import "../assets/page-styles/Cashier.css";
 
 export const Cashier = () => {
-    const [capitalCash, setCapitalCash] = useState<number>(0);
-    const [_capitalCashId, setCapitalCashId] = useState<string>("");
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isSalesTransactionFormOpen, setIsSalesTransactionFormOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
-    const [isLoadingSalesData, setIsLoadingSalesData] = useState(false);
+    const [isLoadingSalesData, setIsLoadingSalesData] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    // Fetch current capital cash balance
     useEffect(() => {
-        const fetchCapitalCash = async () => {
+        const fetchData = async () => {
             try {
-                setIsLoading(true);
-                const data = await apiService.getCapitalCash();
-                // Ensure balance is a valid number
-                const balance = typeof data?.balance === 'number' ? data.balance : 0;
-                setCapitalCash(balance);
-                setCapitalCashId(data?.id || "");
+                setIsLoadingSalesData(true);
+                const [customersData, productsData] = await Promise.all([
+                    apiService.getCustomers(),
+                    apiService.getProducts(true),
+                ]);
+                setCustomers(customersData);
+                setProducts(productsData);
             } catch (error) {
-                console.error("Error fetching capital cash:", error);
-                // Set to 0 if fetch fails
-                setCapitalCash(0);
+                console.error("Error fetching customers/products:", error);
             } finally {
-                setIsLoading(false);
+                setIsLoadingSalesData(false);
             }
         };
 
-        fetchCapitalCash();
-    }, []);
+        fetchData();
+    }, [refreshKey]);
 
-    // Fetch customers and products for sales transaction form
-    useEffect(() => {
-        if (isSalesTransactionFormOpen) {
-            const fetchData = async () => {
-                try {
-                    setIsLoadingSalesData(true);
-                    const [customersData, productsData] = await Promise.all([
-                        apiService.getCustomers(),
-                        apiService.getProducts(true),
-                    ]);
-                    setCustomers(customersData);
-                    setProducts(productsData);
-                } catch (error) {
-                    console.error("Error fetching customers/products:", error);
-                } finally {
-                    setIsLoadingSalesData(false);
-                }
-            };
-            fetchData();
-        } else {
-            setCustomers([]);
-            setProducts([]);
-            setIsLoadingSalesData(false);
-        }
-    }, [isSalesTransactionFormOpen]);
-
-    // Form fields configuration for CashFlow
-    const getCashFlowFields = (): FormField[] => {
-        return [
-            {
-                name: "flowType",
-                label: "Flow Type",
-                type: "select",
-                required: true,
-                options: [
-                    { value: "ADJUSTMENT_IN", label: "ADJUSTMENT_IN" },
-                    { value: "ADJUSTMENT_OUT", label: "ADJUSTMENT_OUT" },
-                ],
-            },
-            {
-                name: "amount",
-                label: "Amount",
-                type: "number",
-                required: true,
-                placeholder: "Enter amount",
-                min: 0,
-                step: 0.01,
-                validation: (value) => {
-                    if (value === null || value === undefined || value === "") {
-                        return "Amount is required";
-                    }
-                    const numValue = Number(value);
-                    if (isNaN(numValue)) {
-                        return "Please enter a valid number";
-                    }
-                    if (numValue <= 0) {
-                        return "Amount must be greater than 0";
-                    }
-                    return null;
-                },
-            },
-            {
-                name: "info",
-                label: "Info",
-                type: "text",
-                required: false,
-                placeholder: "Enter additional information",
-            },
-            {
-                name: "flowDate",
-                label: "Flow Date",
-                type: "date",
-                required: true,
-                validation: (value) => {
-                    if (!value) {
-                        return "Flow date is required";
-                    }
-                    return null;
-                },
-            },
-        ];
-    };
-
-    const handleAdjust = () => {
-        setIsFormOpen(true);
-    };
-
-    const handleSubmit = async (data: Partial<CashFlow>) => {
-        // Convert date string to ISO datetime string
-        const flowDate = data.flowDate 
-            ? new Date(data.flowDate + 'T00:00:00').toISOString()
-            : new Date().toISOString();
-
-        const request: CreateCashFlowRequest = {
-            flowType: data.flowType || "",
-            referenceId: null, // Will be automatically set by backend based on flowType
-            amount: Number(data.amount),
-            info: data.info || "",
-            flowDate: flowDate,
-        };
-
-        const result = await apiService.createCashFlow(request);
-        return result;
-    };
-
-    const handleSuccess = () => {
-        // Refresh the capital cash balance after creating cash flow
-        const refreshBalance = async () => {
-            try {
-                const data = await apiService.getCapitalCash();
-                // Ensure balance is a valid number
-                const balance = typeof data?.balance === 'number' ? data.balance : 0;
-                setCapitalCash(balance);
-                setCapitalCashId(data?.id || "");
-            } catch (error) {
-                console.error("Error refreshing capital cash:", error);
-                // Set to 0 if refresh fails
-                setCapitalCash(0);
-            }
-        };
-        refreshBalance();
+    const handleSaleSuccess = () => {
+        setRefreshKey((current) => current + 1);
     };
 
     return (
         <div className="dashboard-content">
             <div className="dashboard-header">
                 <h1>Cashier</h1>
+                <p>Point of sale — pick products, add to cart, and complete the sale.</p>
             </div>
 
-            {/* Capital Cash section - Admin only */}
-            {isAdmin() && (
-                <div className="cashflow-container">
-                    <h3>Capital Cash</h3>
-                    <div>
-                        <input
-                            type="number"
-                            placeholder="Enter amount"
-                            disabled
-                            value={isLoading ? "Loading..." : (capitalCash ?? 0).toFixed(2)}
-                        />
-                        <button onClick={handleAdjust} disabled={isLoading || !isAdmin()}>
-                            Adjust
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            <div className="table-container">
+            <div className="table-container pos-container">
                 <h3>Point of Sale</h3>
-                <div className="pos-actions">
-                    <button 
-                        className="pos-button"
-                        onClick={() => setIsSalesTransactionFormOpen(true)}
-                    >
-                        ➕ Create Sales Transaction
-                    </button>
-                </div>
+                <SalesTransactionForm
+                    onSuccess={handleSaleSuccess}
+                    products={products}
+                    customers={customers}
+                    isLoading={isLoadingSalesData}
+                />
             </div>
-
-            <GenericForm<CashFlow>
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                fields={getCashFlowFields()}
-                mode="create"
-                initialValues={{
-                    id: "",
-                    flowType: "ADJUSTMENT_IN",
-                    amount: 0,
-                    info: "",
-                    flowDate: new Date().toISOString().split('T')[0],
-                }}
-                onSubmit={handleSubmit}
-                onSuccess={handleSuccess}
-                title="Adjust Capital Cash"
-                submitLabel="Create Cash Flow"
-            />
-
-            <SalesTransactionModal
-                isOpen={isSalesTransactionFormOpen}
-                onClose={() => setIsSalesTransactionFormOpen(false)}
-                onSuccess={handleSuccess}
-                products={products}
-                customers={customers}
-                isLoading={isLoadingSalesData}
-            />
         </div>
     );
 };
-

@@ -1,3 +1,39 @@
+.sales-transaction-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-transaction-panel .sales-transaction-form {
+  min-height: 0;
+}
+
+.sales-transaction-panel .product-picker-grid {
+  max-height: 320px;
+}
+
+.sales-transaction-panel.has-selection .product-picker-grid,
+.sales-transaction-panel.has-cart .product-picker-grid {
+  max-height: 200px;
+}
+
+.sales-transaction-panel .sales-transaction-footer {
+  position: sticky;
+  bottom: 0;
+}
+
+.pos-container {
+  margin-top: 0;
+}
+
+.pos-container .sales-transaction-panel {
+  border: none;
+  background: transparent;
+  margin-top: 0.5rem;
+}
+
 .sales-transaction-modal {
   max-width: 820px;
   max-height: calc(90dvh - 2rem);
@@ -452,6 +488,15 @@
 }
 
 @media (max-width: 768px) {
+  .sales-transaction-panel .product-picker-grid {
+    max-height: 240px;
+  }
+
+  .sales-transaction-panel.has-selection .product-picker-grid,
+  .sales-transaction-panel.has-cart .product-picker-grid {
+    max-height: 160px;
+  }
+
   .sales-transaction-modal {
     max-width: 100%;
     max-height: 100dvh;

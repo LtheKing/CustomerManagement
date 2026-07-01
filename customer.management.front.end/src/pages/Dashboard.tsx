@@ -357,10 +357,10 @@ export const Dashboard = () => {
             🧾 Cashier
           </div>
           
-          {/* Expense - Admin only */}
+          {/* Finance - Admin only */}
           {isAdmin() && (
-            <div className={`nav-item ${activeTab === "expense" ? "active" : ""}`} onClick={() => handleTabChange("expense")}>
-              💸 Expense
+            <div className={`nav-item ${activeTab === "finance" ? "active" : ""}`} onClick={() => handleTabChange("finance")}>
+              💸 Finance
             </div>
           )}
           
@@ -452,7 +452,7 @@ export const Dashboard = () => {
             <Customers />
           ) : activeTab === "cashier" ? (
             <Cashier />
-          ) : activeTab === "expense" && isAdmin() ? (
+          ) : activeTab === "finance" && isAdmin() ? (
             <Expense />
           ) : activeTab === "product" && isAdmin() ? (
             <ProductPage />
