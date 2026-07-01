@@ -35,14 +35,13 @@ export const Cashier = () => {
     };
 
     return (
-        <div className="dashboard-content">
+        <div className="dashboard-content cashier-page">
             <div className="dashboard-header">
                 <h1>Cashier</h1>
                 <p>Point of sale — pick products, add to cart, and complete the sale.</p>
             </div>
 
             <div className="table-container pos-container">
-                <h3>Point of Sale</h3>
                 <SalesTransactionForm
                     onSuccess={handleSaleSuccess}
                     products={products}

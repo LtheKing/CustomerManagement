@@ -74,6 +74,50 @@
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
+/* Point of Sale container */
+.content-panel:has(> .cashier-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cashier-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding-top: 1.25rem;
+  padding-bottom: 1rem;
+}
+
+.cashier-page .dashboard-header {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.cashier-page .dashboard-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.cashier-page .dashboard-header p {
+  font-size: 0.95rem;
+}
+
+.cashier-page .table-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.cashier-page .pos-container > h3 {
+  display: none;
+}
+
 /* Point of Sale Actions */
 .pos-actions {
     display: flex;

@@ -11,27 +11,244 @@
 }
 
 .sales-transaction-panel .product-picker-grid {
-  max-height: 320px;
+  max-height: none;
 }
 
-.sales-transaction-panel.has-selection .product-picker-grid,
-.sales-transaction-panel.has-cart .product-picker-grid {
-  max-height: 200px;
+.sales-pos-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1rem;
+  min-height: 560px;
+  align-items: stretch;
 }
 
-.sales-transaction-panel .sales-transaction-footer {
-  position: sticky;
-  bottom: 0;
+.sales-pos-products {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.sales-pos-products .product-picker-grid {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  align-content: start;
+}
+
+.sales-pos-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.sales-pos-quantity {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.sales-pos-quantity-empty {
+  padding: 1.25rem 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+  background: white;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+}
+
+.sales-pos-cart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.sales-pos-cart .sales-transaction-cart-list {
+  flex: 1;
+  min-height: 120px;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.sales-pos-cart .sales-transaction-cart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  overflow-y: auto;
 }
 
 .pos-container {
   margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .pos-container .sales-transaction-panel {
   border: none;
   background: transparent;
-  margin-top: 0.5rem;
+  margin-top: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pos-container .sales-transaction-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pos-container .sales-transaction-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.25rem 0;
+}
+
+.pos-container .sales-pos-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  align-items: stretch;
+  display: grid;
+}
+
+.pos-container .sales-pos-products {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.pos-container .sales-pos-products .sales-transaction-section-header {
+  flex-shrink: 0;
+}
+
+.pos-container .sales-pos-products .product-picker-grid {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.pos-container .sales-pos-sidebar {
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
+}
+
+.pos-container .sales-pos-cart {
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+.pos-container .sales-pos-cart .sales-transaction-cart-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pos-container .sales-pos-checkout-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+  padding: 0.5rem 1.25rem;
+  margin: 0 -1.25rem;
+  z-index: 5;
+  min-height: 52px;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-customer {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-customer label {
+  margin: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-customer input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+}
+
+.pos-container .sales-pos-checkout-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-grand-total {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  min-height: unset;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-grand-total strong {
+  font-size: 1rem;
+}
+
+.pos-container .sales-pos-checkout-bar .sales-transaction-footer {
+  position: static;
+  margin: 0;
+  padding: 0;
+  border-top: none;
+  box-shadow: none;
+  background: transparent;
+  gap: 0.5rem;
+}
+
+.pos-container .sales-pos-checkout-bar .btn-cancel,
+.pos-container .sales-pos-checkout-bar .btn-submit {
+  padding: 0.45rem 0.9rem;
+  min-width: unset;
+  font-size: 0.875rem;
+}
+
+.pos-container .sales-pos-checkout-bar .btn-submit {
+  min-width: 140px;
+}
+
+.sales-transaction-panel .sales-transaction-footer {
+  position: static;
+  flex-shrink: 0;
 }
 
 .sales-transaction-modal {
@@ -487,14 +704,59 @@
   min-width: 160px;
 }
 
-@media (max-width: 768px) {
-  .sales-transaction-panel .product-picker-grid {
-    max-height: 240px;
+@media (max-width: 900px) {
+  .sales-pos-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
   }
 
-  .sales-transaction-panel.has-selection .product-picker-grid,
-  .sales-transaction-panel.has-cart .product-picker-grid {
-    max-height: 160px;
+  .pos-container .sales-pos-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .pos-container .sales-pos-products .product-picker-grid {
+    max-height: none;
+    min-height: 220px;
+  }
+
+  .pos-container .sales-pos-checkout-bar {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0;
+  }
+
+  .pos-container .sales-pos-checkout-bar .sales-transaction-customer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pos-container .sales-pos-checkout-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pos-container .sales-pos-checkout-bar .sales-transaction-footer {
+    flex-direction: row;
+  }
+
+  .pos-container .sales-pos-checkout-bar .btn-cancel,
+  .pos-container .sales-pos-checkout-bar .btn-submit {
+    flex: 1;
+  }
+
+  .sales-pos-products .product-picker-grid {
+    max-height: 300px;
+  }
+
+  .sales-pos-cart .sales-transaction-cart-list {
+    max-height: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sales-pos-products .product-picker-grid {
+    max-height: 240px;
   }
 
   .sales-transaction-modal {
