@@ -112,6 +112,18 @@ const ProductSalesTable = ({ sales }: { sales: Sales[] }) => {
   );
 };
 
+const NAV_ITEMS = [
+  { id: "home", label: "Overview", icon: "📊", adminOnly: true },
+  { id: "sales", label: "Sales", icon: "💰", adminOnly: true },
+  { id: "customers", label: "Customers", icon: "👥", adminOnly: true },
+  { id: "cashier", label: "Cashier", icon: "🧾" },
+  { id: "finance", label: "Finance", icon: "💸", adminOnly: true },
+  { id: "product", label: "Products", icon: "📦", adminOnly: true },
+  { id: "user", label: "Users", icon: "👤", adminOnly: true },
+] as const;
+
+const SIDEBAR_COLLAPSED_KEY = "sidebarCollapsed";
+
 export const Dashboard = () => {
   // Set default tab based on user role
   const getDefaultTab = (): string => {
@@ -120,6 +132,9 @@ export const Dashboard = () => {
   };
 
   const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
+  );
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [salesTransactions, setSalesTransactions] = useState<Sales[]>([]);
   const [loading, setLoading] = useState<LoadingState>({ isLoading: true, error: null });
@@ -139,6 +154,16 @@ export const Dashboard = () => {
     // Default fallback
     setActiveTab("cashier");
   };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  };
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => !("adminOnly" in item) || isAdmin());
 
   // Helper function to calculate percentage change
   const calculatePercentageChange = (current: number, previous: number): string => {
@@ -326,63 +351,44 @@ export const Dashboard = () => {
   return (
     <div className="app-container">
       <div className="main-content">
-        <div className="sidebar">
+        <div className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
           <div className="sidebar-header">
-            <h2>Dashboard</h2>
-          </div>
-          
-          {/* Overview - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "home" ? "active" : ""}`} onClick={() => handleTabChange("home")}>
-              📊 Overview
-            </div>
-          )}
-          
-          {/* Sales - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "sales" ? "active" : ""}`} onClick={() => handleTabChange("sales")}>
-              💰 Sales
-            </div>
-          )}
-          
-          {/* Customers - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => handleTabChange("customers")}>
-              👥 Customers
-            </div>
-          )}
-          
-          {/* Cashier - All users */}
-          <div className={`nav-item ${activeTab === "cashier" ? "active" : ""}`} onClick={() => handleTabChange("cashier")}>
-            🧾 Cashier
-          </div>
-          
-          {/* Finance - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "finance" ? "active" : ""}`} onClick={() => handleTabChange("finance")}>
-              💸 Finance
-            </div>
-          )}
-          
-          {/* Products - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "product" ? "active" : ""}`} onClick={() => handleTabChange("product")}>
-              📦 Products
-            </div>
-          )}
-          
-          {/* Users - Admin only */}
-          {isAdmin() && (
-            <div className={`nav-item ${activeTab === "user" ? "active" : ""}`} onClick={() => handleTabChange("user")}>
-              👤 Users
-            </div>
-          )}
-          <div className="sidebar-footer">
-            <button 
-              className="logout-button" 
-              onClick={handleLogout}
+            {!sidebarCollapsed && <h2>Dashboard</h2>}
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              🚪 Logout
+              {sidebarCollapsed ? "»" : "«"}
+            </button>
+          </div>
+
+          {visibleNavItems.map((item) => (
+            <div
+              key={item.id}
+              className={`nav-item ${activeTab === item.id ? "active" : ""}`}
+              onClick={() => handleTabChange(item.id)}
+              title={item.label}
+            >
+              <span className="nav-item-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="nav-item-label">{item.label}</span>
+            </div>
+          ))}
+
+          <div className="sidebar-footer">
+            <button
+              className="logout-button"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <span className="nav-item-icon" aria-hidden="true">
+                🚪
+              </span>
+              <span className="nav-item-label">Logout</span>
             </button>
           </div>
         </div>
