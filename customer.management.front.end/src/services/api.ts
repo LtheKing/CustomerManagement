@@ -12,6 +12,7 @@ import {
   SalesTransactionResponse,
   Product,
   Sales,
+  SalesTransactionGroup,
   PagedResult,
   LoginRequest,
   LoginResponse,
@@ -435,6 +436,7 @@ class ApiService {
       return {
         data: (result.Data || result.data || []).map((sale: any) => ({
           id: sale.Id || sale.id,
+          transactionId: sale.TransactionId || sale.transactionId || sale.Id || sale.id,
           customerId: sale.CustomerId || sale.customerId,
           customerName: sale.CustomerName || sale.customerName,
           productId: sale.ProductId || sale.productId,
@@ -456,6 +458,68 @@ class ApiService {
     } catch (error) {
       console.warn('Sales transactions endpoint not available', error);
       // Return empty paginated result on error
+      return {
+        data: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      };
+    }
+  }
+
+  async getSalesTransactionGroups(
+    page: number = 1,
+    pageSize: number = 20,
+    startDate?: string,
+    endDate?: string,
+    customerId?: string,
+    productId?: string,
+    cashierName?: string
+  ): Promise<PagedResult<SalesTransactionGroup>> {
+    try {
+      const params: string[] = [
+        `page=${page}`,
+        `pageSize=${pageSize}`,
+      ];
+
+      if (startDate) params.push(`startDate=${encodeURIComponent(startDate)}`);
+      if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
+      if (customerId) params.push(`customerId=${encodeURIComponent(customerId)}`);
+      if (productId) params.push(`productId=${encodeURIComponent(productId)}`);
+      if (cashierName) params.push(`cashierName=${encodeURIComponent(cashierName)}`);
+
+      const result = await this.fetchData<any>(`/Sales/grouped?${params.join('&')}`);
+
+      return {
+        data: (result.Data || result.data || []).map((group: any) => ({
+          transactionId: group.TransactionId || group.transactionId,
+          customerId: group.CustomerId || group.customerId,
+          customerName: group.CustomerName || group.customerName,
+          cashierName: group.CashierName || group.cashierName,
+          saleDate: group.SaleDate || group.saleDate,
+          itemCount: group.ItemCount ?? group.itemCount ?? 0,
+          totalQuantity: group.TotalQuantity ?? group.totalQuantity ?? 0,
+          totalAmount: group.TotalAmount ?? group.totalAmount ?? 0,
+          items: (group.Items || group.items || []).map((item: any) => ({
+            id: item.Id || item.id,
+            productId: item.ProductId || item.productId,
+            productName: item.ProductName || item.productName,
+            quantity: item.Quantity ?? item.quantity ?? 0,
+            amount: item.Amount ?? item.amount ?? 0,
+          })),
+        })),
+        totalCount: result.TotalCount || result.totalCount || 0,
+        page: result.Page || result.page || 1,
+        pageSize: result.PageSize || result.pageSize || 20,
+        totalPages: result.TotalPages || result.totalPages || 0,
+        hasPreviousPage: result.HasPreviousPage ?? result.hasPreviousPage ?? false,
+        hasNextPage: result.HasNextPage ?? result.hasNextPage ?? false,
+      };
+    } catch (error) {
+      console.warn('Grouped sales endpoint not available', error);
       return {
         data: [],
         totalCount: 0,
@@ -491,6 +555,10 @@ class ApiService {
       requestBody.SaleDate = request.saleDate;
     }
 
+    if (request.transactionId) {
+      requestBody.TransactionId = request.transactionId;
+    }
+
     const response = await fetch(`${API_BASE_URL}/Sales`, {
       method: 'POST',
       headers: {
@@ -518,6 +586,7 @@ class ApiService {
     // Convert PascalCase response back to camelCase
     return {
       id: result.Id || result.id,
+      transactionId: result.TransactionId || result.transactionId || result.Id || result.id,
       customerId: result.CustomerId || result.customerId,
       productId: result.ProductId || result.productId,
       quantity: result.Quantity || result.quantity,

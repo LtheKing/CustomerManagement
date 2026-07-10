@@ -74,6 +74,7 @@ CREATE INDEX IF NOT EXISTS "IX_Customers_CreatedBy" ON "Customers" ("CreatedBy")
 -- =====================================================
 CREATE TABLE IF NOT EXISTS "Sales" (
     "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "TransactionId" UUID NOT NULL,
     "CustomerId" UUID NOT NULL,
     "ProductId" UUID NOT NULL,
     "Quantity" INTEGER NOT NULL DEFAULT 0,
@@ -103,6 +104,7 @@ CREATE INDEX IF NOT EXISTS "IX_Sales_CustomerId" ON "Sales" ("CustomerId");
 CREATE INDEX IF NOT EXISTS "IX_Sales_ProductId" ON "Sales" ("ProductId");
 CREATE INDEX IF NOT EXISTS "IX_Sales_CreatedBy" ON "Sales" ("CreatedBy");
 CREATE INDEX IF NOT EXISTS "IX_Sales_SaleDate" ON "Sales" ("SaleDate");
+CREATE INDEX IF NOT EXISTS "IX_Sales_TransactionId" ON "Sales" ("TransactionId");
 
 -- =====================================================
 -- Table: CustomerTraffic

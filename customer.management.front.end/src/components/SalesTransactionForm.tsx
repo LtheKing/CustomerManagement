@@ -190,6 +190,9 @@ export function SalesTransactionForm({
 
     setIsSubmitting(true);
     try {
+      const transactionId = crypto.randomUUID();
+      const saleDate = new Date().toISOString();
+
       for (const item of cart) {
         const request: CreateSalesTransactionRequest = {
           customerName: trimmedCustomerName,
@@ -197,8 +200,9 @@ export function SalesTransactionForm({
           quantity: item.quantity,
           amount: item.amount,
           cashierName,
-          saleDate: new Date().toISOString(),
+          saleDate,
           createdBy,
+          transactionId,
         };
         await apiService.createSalesTransaction(request);
       }

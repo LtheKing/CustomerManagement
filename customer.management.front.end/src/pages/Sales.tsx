@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import * as XLSX from "xlsx";
 import { apiService } from "../services/api";
-import { Customer, DashboardStats, SalesData, LoadingState, Product, PagedResult } from "../types";
+import { Customer, DashboardStats, SalesData, LoadingState, Product, PagedResult, SalesTransactionGroup } from "../types";
 import type { Sales as SalesType } from "../types";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
@@ -132,7 +132,7 @@ const AnalyticTab = ({ customers, dashboardStats, salesTransactions }: { custome
 };
 
 const ReportTab = () => {
-  const [pagedResult, setPagedResult] = useState<PagedResult<SalesType>>({
+  const [pagedResult, setPagedResult] = useState<PagedResult<SalesTransactionGroup>>({
     data: [],
     totalCount: 0,
     page: 1,
@@ -145,6 +145,7 @@ const ReportTab = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cashierNames, setCashierNames] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -158,13 +159,13 @@ const ReportTab = () => {
   const [selectedCashier, setSelectedCashier] = useState<string>("");
 
   // Cache management: Store loaded pages by filter key and page number
-  const [pageCache, setPageCache] = useState<Map<string, PagedResult<SalesType>>>(new Map());
+  const [pageCache, setPageCache] = useState<Map<string, PagedResult<SalesTransactionGroup>>>(new Map());
   const [cacheTimestamp, setCacheTimestamp] = useState<number>(Date.now());
   const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache expiry
 
   // Generate cache key from current filters
   const getCacheKey = (page: number): string => {
-    return `${page}-${pageSize}-${startDate}-${endDate}-${selectedCustomerId}-${selectedProductId}-${selectedCashier}`;
+    return `grouped-${page}-${pageSize}-${startDate}-${endDate}-${selectedCustomerId}-${selectedProductId}-${selectedCashier}`;
   };
 
   // Check if cache is valid (not expired)
@@ -176,6 +177,18 @@ const ReportTab = () => {
   const clearCache = () => {
     setPageCache(new Map());
     setCacheTimestamp(Date.now());
+  };
+
+  const toggleExpanded = (transactionId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(transactionId)) {
+        next.delete(transactionId);
+      } else {
+        next.add(transactionId);
+      }
+      return next;
+    });
   };
 
   const fetchSalesTransactions = async (page: number = currentPage, forceRefresh: boolean = false) => {
@@ -192,7 +205,7 @@ const ReportTab = () => {
       }
 
       setLoading(true);
-      const result = await apiService.getSalesTransactions(
+      const result = await apiService.getSalesTransactionGroups(
         page,
         pageSize,
         startDate || undefined,
@@ -286,16 +299,14 @@ const ReportTab = () => {
     }
 
     try {
-      // Fetch all data matching current filters (without pagination)
-      // We'll fetch with a large page size to get all results
-      const allData: SalesType[] = [];
-      let currentPage = 1;
+      const allData: SalesTransactionGroup[] = [];
+      let exportPage = 1;
       let hasMore = true;
 
       while (hasMore) {
-        const result = await apiService.getSalesTransactions(
-          currentPage,
-          1000, // Large page size to minimize requests
+        const result = await apiService.getSalesTransactionGroups(
+          exportPage,
+          1000,
           startDate || undefined,
           endDate || undefined,
           selectedCustomerId || undefined,
@@ -305,30 +316,30 @@ const ReportTab = () => {
         
         allData.push(...result.data);
         hasMore = result.hasNextPage;
-        currentPage++;
+        exportPage++;
       }
 
-      // Prepare data for Excel export
-      const exportData = allData.map(transaction => ({
-        "Date": formatDate(transaction.saleDate),
-        "Customer": transaction.customerName,
-        "Product": transaction.productName,
-        "Quantity": transaction.quantity,
-        "Amount": transaction.amount,
-        "Cashier": transaction.cashierName || "N/A"
-      }));
+      const exportData = allData.flatMap((transaction) =>
+        transaction.items.map((item) => ({
+          "Date": formatDate(transaction.saleDate),
+          "Transaction ID": transaction.transactionId,
+          "Customer": transaction.customerName,
+          "Product": item.productName,
+          "Quantity": item.quantity,
+          "Amount": item.amount,
+          "Transaction Total": transaction.totalAmount,
+          "Cashier": transaction.cashierName || "N/A",
+        }))
+      );
 
-      // Create workbook and worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
 
-      // Generate filename with current date
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateStr = now.toISOString().split('T')[0];
       const filename = `Sales_Report_${dateStr}.xlsx`;
 
-      // Write file and trigger download
       XLSX.writeFile(workbook, filename);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -348,6 +359,16 @@ const ReportTab = () => {
     } catch {
       return dateString;
     }
+  };
+
+  const formatAmount = (amount: number) =>
+    `IDR ${amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  const productSummary = (transaction: SalesTransactionGroup) => {
+    if (transaction.items.length === 1) {
+      return transaction.items[0].productName;
+    }
+    return `${transaction.itemCount} products`;
   };
 
   return (
@@ -474,18 +495,19 @@ const ReportTab = () => {
             <table className="sales-report-table sales-report-table-wrapper">
               <thead>
                 <tr>
+                  <th className="sales-col-expand"></th>
                   <th className="sales-col-date">Date</th>
                   <th className="sales-col-customer">Customer</th>
-                  <th className="sales-col-product">Product</th>
-                  <th className="text-center sales-col-quantity">Quantity</th>
-                  <th className="text-right sales-col-amount">Amount</th>
+                  <th className="sales-col-product">Products</th>
+                  <th className="text-center sales-col-quantity">Qty</th>
+                  <th className="text-right sales-col-amount">Total</th>
                   <th className="sales-col-cashier">Cashier</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedResult.data.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="sales-report-empty-state">
+                    <td colSpan={7} className="sales-report-empty-state">
                       <div className="sales-report-empty-state-content">
                         <span className="sales-report-empty-state-icon">💰</span>
                         <span>No sales transactions found</span>
@@ -493,20 +515,56 @@ const ReportTab = () => {
                     </td>
                   </tr>
                 ) : (
-                  pagedResult.data.map((transaction) => (
-                    <tr key={transaction.id} className="sales-report-table-row">
-                      <td className="sales-cell-date">{formatDate(transaction.saleDate)}</td>
-                      <td className="sales-cell-customer">{transaction.customerName}</td>
-                      <td className="sales-cell-product">{transaction.productName}</td>
-                      <td className="text-center sales-cell-quantity">{transaction.quantity}</td>
-                      <td className="text-right sales-cell-amount">
-                        IDR {transaction.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </td>
-                      <td className={transaction.cashierName ? "sales-cell-cashier" : "sales-cell-cashier sales-cell-cashier-na"}>
-                        {transaction.cashierName || "N/A"}
-                      </td>
-                    </tr>
-                  ))
+                  pagedResult.data.map((transaction) => {
+                    const isExpanded = expandedIds.has(transaction.transactionId);
+                    const canExpand = transaction.items.length > 1;
+
+                    return (
+                      <Fragment key={transaction.transactionId}>
+                        <tr
+                          className={`sales-report-table-row ${canExpand ? "sales-report-row-expandable" : ""} ${isExpanded ? "expanded" : ""}`}
+                          onClick={() => canExpand && toggleExpanded(transaction.transactionId)}
+                        >
+                          <td className="sales-cell-expand">
+                            {canExpand ? (
+                              <button
+                                type="button"
+                                className="sales-expand-btn"
+                                aria-label={isExpanded ? "Collapse transaction" : "Expand transaction"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpanded(transaction.transactionId);
+                                }}
+                              >
+                                {isExpanded ? "▾" : "▸"}
+                              </button>
+                            ) : (
+                              <span className="sales-expand-placeholder">•</span>
+                            )}
+                          </td>
+                          <td className="sales-cell-date">{formatDate(transaction.saleDate)}</td>
+                          <td className="sales-cell-customer">{transaction.customerName}</td>
+                          <td className="sales-cell-product">{productSummary(transaction)}</td>
+                          <td className="text-center sales-cell-quantity">{transaction.totalQuantity}</td>
+                          <td className="text-right sales-cell-amount">{formatAmount(transaction.totalAmount)}</td>
+                          <td className={transaction.cashierName ? "sales-cell-cashier" : "sales-cell-cashier sales-cell-cashier-na"}>
+                            {transaction.cashierName || "N/A"}
+                          </td>
+                        </tr>
+                        {isExpanded && transaction.items.map((item) => (
+                          <tr key={item.id} className="sales-report-item-row">
+                            <td></td>
+                            <td className="sales-cell-date sales-cell-muted"></td>
+                            <td className="sales-cell-customer sales-cell-muted"></td>
+                            <td className="sales-cell-product">{item.productName}</td>
+                            <td className="text-center sales-cell-quantity">{item.quantity}</td>
+                            <td className="text-right sales-cell-amount">{formatAmount(item.amount)}</td>
+                            <td></td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>

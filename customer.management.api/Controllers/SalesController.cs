@@ -21,9 +21,6 @@ namespace customer.management.api.Controllers
         {
             try
             {
-                // If pagination parameters are explicitly provided (not default values), use paginated endpoint
-                // Check if any query parameter was provided by checking if page or pageSize differ from defaults
-                // Since model binding will set defaults, we check if they were explicitly set via query params
                 var hasPaginationParams = Request.Query.ContainsKey("page") || Request.Query.ContainsKey("pageSize");
                 
                 if (hasPaginationParams)
@@ -32,7 +29,6 @@ namespace customer.management.api.Controllers
                     return Ok(pagedResult);
                 }
 
-                // Otherwise, use non-paginated endpoints for backward compatibility
                 IEnumerable<SalesDto> result;
 
                 if (request.CustomerId.HasValue)
@@ -56,8 +52,23 @@ namespace customer.management.api.Controllers
             }
         }
 
+        // GET: api/sales/grouped — one row per checkout (TransactionId)
+        [HttpGet("grouped")]
+        public async Task<ActionResult> GetSalesGrouped([FromQuery] GetSalesPagedRequest request)
+        {
+            try
+            {
+                var pagedResult = await _salesService.GetSalesGroupedPagedAsync(request);
+                return Ok(pagedResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving grouped sales", details = ex.Message });
+            }
+        }
+
         // GET: api/sales/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         public async Task<ActionResult<SalesDto>> GetSales(Guid id)
         {
             try

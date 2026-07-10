@@ -70,6 +70,7 @@ namespace customer.management.data.entity.DbContext
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => e.TransactionId);
                 
                 // Configure relationship with Customer
                 entity.HasOne(e => e.Customer)

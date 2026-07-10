@@ -10,6 +10,7 @@ namespace customer.management.api.Interfaces
         Task<IEnumerable<SalesDto>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<SalesDto> CreateSalesAsync(CreateSalesDto createDto);
         Task<PagedResult<SalesDto>> GetSalesPagedAsync(GetSalesPagedRequest request);
+        Task<PagedResult<SalesTransactionGroupDto>> GetSalesGroupedPagedAsync(GetSalesPagedRequest request);
     }
 }
 

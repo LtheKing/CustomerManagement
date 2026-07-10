@@ -22,6 +22,12 @@ namespace customer.management.api.Models
         [Required]
         public Guid ProductId { get; set; }
 
+        /// <summary>
+        /// Optional shared checkout ID. When creating multiple products in one cart,
+        /// send the same TransactionId for every line item.
+        /// </summary>
+        public Guid? TransactionId { get; set; }
+
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be greater than 0")]
         public int Quantity { get; set; }

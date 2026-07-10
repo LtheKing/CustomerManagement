@@ -1,0 +1,9 @@
+- bikin report cashflow (ada edit dan hapus)
+- menu cashier langsung input gausah klik button dulu [DONE]
+- menu expense ganti jadi finance, capital cash di cashier pindah kesitu [DONE]
+- finance bikin category :
+ - beli bahan
+ - alat 
+ - utility
+ - lain2
+

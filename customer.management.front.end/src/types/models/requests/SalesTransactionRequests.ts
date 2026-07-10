@@ -11,6 +11,8 @@ export interface CreateSalesTransactionRequest {
   cashierName?: string;
   saleDate?: string; // Optional: defaults to current time
   createdBy: string;
+  /** Shared ID for all products in the same checkout */
+  transactionId?: string;
 }
 
 /**
@@ -18,6 +20,7 @@ export interface CreateSalesTransactionRequest {
  */
 export interface SalesTransactionResponse {
   id: string;
+  transactionId: string;
   customerId: string;
   productId: string;
   quantity: number;
@@ -26,4 +29,3 @@ export interface SalesTransactionResponse {
   saleDate: string;
   createdBy: string;
 }
-

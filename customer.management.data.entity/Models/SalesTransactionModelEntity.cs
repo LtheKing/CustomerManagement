@@ -8,6 +8,12 @@ namespace customer.management.data.entity.Models
     {
         [Key]
         public Guid Id { get; set; }
+
+        /// <summary>
+        /// Shared ID for all line items created in the same checkout.
+        /// </summary>
+        [Required]
+        public Guid TransactionId { get; set; }
         
         [Required]
         public Guid CustomerId { get; set; }

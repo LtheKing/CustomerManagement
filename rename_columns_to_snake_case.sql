@@ -9,6 +9,10 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND column_name='Id') THEN
         ALTER TABLE public."Sales" RENAME COLUMN "Id" TO id;
     END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND column_name='TransactionId') THEN
+        ALTER TABLE public."Sales" RENAME COLUMN "TransactionId" TO transaction_id;
+    END IF;
     
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND column_name='CustomerId') THEN
         ALTER TABLE public."Sales" RENAME COLUMN "CustomerId" TO customer_id;

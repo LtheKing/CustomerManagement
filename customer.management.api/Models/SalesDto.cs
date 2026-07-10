@@ -6,6 +6,7 @@ namespace customer.management.api.Models
     public class SalesDto
     {
         public Guid Id { get; set; }
+        public Guid TransactionId { get; set; }
         public Guid CustomerId { get; set; }
         public string CustomerName { get; set; } = null!;
         public Guid ProductId { get; set; }
