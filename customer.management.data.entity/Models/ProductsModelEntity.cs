@@ -29,6 +29,9 @@ namespace customer.management.data.entity.Models
         
         public DateTime? UpdatedAt { get; set; }
 
+        [MaxLength(500)]
+        public string? ImageUrl { get; set; }
+
         // Navigation properties
         public ICollection<SalesTransactionItemModelEntity> TransactionItems { get; set; } = new List<SalesTransactionItemModelEntity>();
     }

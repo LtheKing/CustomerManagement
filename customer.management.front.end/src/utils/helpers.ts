@@ -11,9 +11,11 @@ export const formatDate = (date: Date): string => {
 };
 
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('id-ID', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 };
 
@@ -27,7 +29,29 @@ export const sortCustomersByName = (customers: Customer[]): Customer[] => {
 };
 
 export const filterCustomersByEmail = (customers: Customer[], email: string): Customer[] => {
+  const lowerEmail = email.toLowerCase();
   return customers.filter(customer => 
-    customer.email.toLowerCase().includes(email.toLowerCase())
+    customer.email?.toLowerCase()?.includes(lowerEmail) ?? false
   );
+};
+
+export const getApiOrigin = (): string => {
+  const baseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
+
+  return baseUrl.replace(/\/api\/?$/, '');
+};
+
+export const getProductImageUrl = (imageUrl?: string | null): string | null => {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+
+  const origin = getApiOrigin();
+  return `${origin}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
 };

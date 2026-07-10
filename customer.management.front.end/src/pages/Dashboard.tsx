@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../services/api";
-import { Customer, DashboardStats, SalesData, LoadingState } from "../types";
+import { DashboardStats, SalesData, LoadingState, Sales, ProductSalesData } from "../types";
+import { Cashier } from "./Cashier";
+import { Sales as SalesPage } from "./Sales";
+import { Customers } from "./Customers";
+import { Expense } from "./Expense";
+import { ProductPage } from "./Product";
+import { UserPage } from "./User";
+import { isAdmin, isSales } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
@@ -15,94 +22,278 @@ const StatCard = ({ title, value, change, icon }: { title: string; value: string
 );
 
 const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
-  const maxValue = Math.max(...data.map(d => d.sales));
+  const maxValue = Math.max(...data.map(d => d.sales), 1); // Prevent division by zero
   
   return (
     <div className="chart-container">
       <h3>{title}</h3>
       <div className="chart">
-        {data.map((item, index) => (
-          <div key={index} className="chart-bar">
-            <div 
-              className="bar" 
-              style={{ height: `${(item.sales / maxValue) * 100}%` }}
-            ></div>
-            <span className="bar-label">{item.month}</span>
-          </div>
-        ))}
+        {data.map((item, index) => {
+          const barHeight = maxValue > 0 && item.sales > 0 ? (item.sales / maxValue) * 100 : 0;
+          return (
+            <div key={index} className="chart-bar">
+              <div className="bar-value-container">
+                <span className="bar-value">
+                  IDR {item.sales.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+                <span className="bar-customers">
+                  {item.customers} {item.customers === 1 ? 'customer' : 'customers'}
+                </span>
+              </div>
+              <div 
+                className="bar" 
+                style={{ 
+                  height: barHeight > 0 ? `${barHeight}%` : '2px',
+                  minHeight: barHeight > 0 ? '20px' : '2px'
+                }}
+                title={`${item.month}: IDR ${item.sales.toLocaleString('id-ID')} (${item.customers} customers)`}
+              ></div>
+              <span className="bar-label">{item.month}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 };
 
-const CustomerTable = ({ customers }: { customers: Customer[] }) => {
-  const getCustomerStatus = (customer: Customer): string => {
-    if (!customer.sales || customer.sales.length === 0) return "No Orders";
-    
-    const lastSale = customer.sales.reduce((latest, sale) => 
-      new Date(sale.saleDate) > new Date(latest.saleDate) ? sale : latest
-    );
-    
-    const daysSinceLastOrder = Math.floor(
-      (Date.now() - new Date(lastSale.saleDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    
-    return daysSinceLastOrder <= 30 ? "Active" : "Inactive";
-  };
+const ProductSalesTable = ({ sales }: { sales: Sales[] }) => {
+  // Group sales by product and calculate totals
+  const productSalesMap = new Map<string, ProductSalesData>();
 
-  const getLastOrderDate = (customer: Customer): string => {
-    if (!customer.sales || customer.sales.length === 0) return "No orders";
-    
-    const lastSale = customer.sales.reduce((latest, sale) => 
-      new Date(sale.saleDate) > new Date(latest.saleDate) ? sale : latest
-    );
-    
-    return new Date(lastSale.saleDate).toLocaleDateString();
-  };
+  sales.forEach(sale => {
+    const existing = productSalesMap.get(sale.productId);
+    if (existing) {
+      existing.totalQuantity += sale.quantity;
+      existing.totalPrice += sale.amount;
+    } else {
+      productSalesMap.set(sale.productId, {
+        productName: sale.productName,
+        totalQuantity: sale.quantity,
+        totalPrice: sale.amount,
+      });
+    }
+  });
 
-  const getTotalSpent = (customer: Customer): number => {
-    return customer.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-  };
+  // Convert to array and sort by total quantity (descending)
+  const productSales = Array.from(productSalesMap.values())
+    .sort((a, b) => b.totalQuantity - a.totalQuantity);
 
   return (
     <div className="table-container">
-      <h3>Recent Customers</h3>
+      <h3>Product Sales</h3>
       <table className="customer-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Last Order</th>
-            <th>Total Spent</th>
+            <th>Product Name</th>
+            <th>Total Qty Sold</th>
+            <th>Total Price Sold</th>
           </tr>
         </thead>
         <tbody>
-          {customers.slice(0, 10).map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email || "N/A"}</td>
-              <td>
-                <span className={`status ${getCustomerStatus(customer).toLowerCase().replace(" ", "-")}`}>
-                  {getCustomerStatus(customer)}
-                </span>
+          {productSales.length === 0 ? (
+            <tr>
+              <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                No sales data available
               </td>
-              <td>{getLastOrderDate(customer)}</td>
-              <td>${getTotalSpent(customer).toLocaleString()}</td>
             </tr>
-          ))}
+          ) : (
+            productSales.map((product, index) => (
+              <tr key={index}>
+                <td>{product.productName}</td>
+                <td>{product.totalQuantity.toLocaleString('id-ID')}</td>
+                <td>IDR {product.totalPrice.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
   );
 };
 
+const NAV_ITEMS = [
+  { id: "home", label: "Overview", icon: "📊", adminOnly: true },
+  { id: "sales", label: "Sales", icon: "💰", adminOnly: true },
+  { id: "customers", label: "Customers", icon: "👥", adminOnly: true },
+  { id: "cashier", label: "Cashier", icon: "🧾" },
+  { id: "finance", label: "Finance", icon: "💸", adminOnly: true },
+  { id: "product", label: "Products", icon: "📦", adminOnly: true },
+  { id: "user", label: "Users", icon: "👤", adminOnly: true },
+] as const;
+
+const SIDEBAR_COLLAPSED_KEY = "sidebarCollapsed";
+
 export const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState<string>("home");
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  // Set default tab based on user role
+  const getDefaultTab = (): string => {
+    if (isSales()) return "cashier";
+    return "home";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
+  );
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [salesTransactions, setSalesTransactions] = useState<Sales[]>([]);
   const [loading, setLoading] = useState<LoadingState>({ isLoading: true, error: null });
+
+  // Handle tab change with role-based access control
+  const handleTabChange = (tab: string) => {
+    // Sales users can only access cashier
+    if (isSales() && tab !== "cashier") {
+      setActiveTab("cashier");
+      return;
+    }
+    // Admin can access all tabs
+    if (isAdmin() || tab === "cashier") {
+      setActiveTab(tab);
+      return;
+    }
+    // Default fallback
+    setActiveTab("cashier");
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  };
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => !("adminOnly" in item) || isAdmin());
+
+  // Helper function to calculate percentage change
+  const calculatePercentageChange = (current: number, previous: number): string => {
+    if (previous === 0) {
+      return current > 0 ? "+100% from last month" : "No change";
+    }
+    const change = ((current - previous) / previous) * 100;
+    const sign = change >= 0 ? "+" : "";
+    return `${sign}${change.toFixed(1)}% from last month`;
+  };
+
+  // Helper function to get current month and previous month data
+  const getMonthData = (sales: Sales[]) => {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const currentMonthSales = sales.filter(s => s.saleDate.startsWith(currentMonth));
+    const previousMonthSales = sales.filter(s => s.saleDate.startsWith(previousMonth));
+
+    const currentMonthRevenue = currentMonthSales.reduce((sum, s) => sum + s.amount, 0);
+    const previousMonthRevenue = previousMonthSales.reduce((sum, s) => sum + s.amount, 0);
+
+    const currentMonthCustomers = new Set(currentMonthSales.map(s => s.customerId)).size;
+    const previousMonthCustomers = new Set(previousMonthSales.map(s => s.customerId)).size;
+
+    const currentMonthAvgOrder = currentMonthSales.length > 0 
+      ? currentMonthRevenue / currentMonthSales.length 
+      : 0;
+    const previousMonthAvgOrder = previousMonthSales.length > 0 
+      ? previousMonthRevenue / previousMonthSales.length 
+      : 0;
+
+    return {
+      currentMonthRevenue,
+      previousMonthRevenue,
+      currentMonthCustomers,
+      previousMonthCustomers,
+      currentMonthAvgOrder,
+      previousMonthAvgOrder,
+    };
+  };
+
+  // Helper function to find most sold product
+  const getMostSoldProduct = (sales: Sales[]): { name: string; count: number } | null => {
+    if (sales.length === 0) return null;
+
+    const productCounts = new Map<string, number>();
+    const productNames = new Map<string, string>();
+
+    sales.forEach(sale => {
+      const count = productCounts.get(sale.productId) || 0;
+      productCounts.set(sale.productId, count + 1);
+      productNames.set(sale.productId, sale.productName);
+    });
+
+    let maxCount = 0;
+    let mostSoldProductId = "";
+
+    productCounts.forEach((count, productId) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostSoldProductId = productId;
+      }
+    });
+
+    if (mostSoldProductId) {
+      return {
+        name: productNames.get(mostSoldProductId) || "Unknown",
+        count: maxCount,
+      };
+    }
+
+    return null;
+  };
+
+  // Helper function to calculate sales data from actual transactions
+  const calculateSalesTrendData = (sales: Sales[]): SalesData[] => {
+    // Get last 6 months - ensure we get unique consecutive months
+    const now = new Date();
+    const last6Months: Date[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      last6Months.push(date);
+    }
+
+    // Use a Map to ensure unique months and aggregate data
+    const monthDataMap = new Map<string, { month: string; sales: number; customers: Set<string> }>();
+
+    last6Months.forEach(date => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`; // YYYY-MM format
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      // Initialize if not exists
+      if (!monthDataMap.has(monthKey)) {
+        monthDataMap.set(monthKey, {
+          month: monthName,
+          sales: 0,
+          customers: new Set()
+        });
+      }
+      
+      // Filter sales for this month
+      const monthSales = sales.filter(sale => sale.saleDate.startsWith(monthKey));
+      
+      // Aggregate data
+      const monthData = monthDataMap.get(monthKey)!;
+      monthData.sales = monthSales.reduce((sum, sale) => sum + sale.amount, 0);
+      monthSales.forEach(sale => monthData.customers.add(sale.customerId));
+    });
+
+    // Convert to array maintaining order
+    return last6Months.map(date => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const monthData = monthDataMap.get(monthKey)!;
+      
+      return {
+        month: monthData.month,
+        sales: monthData.sales,
+        customers: monthData.customers.size
+      };
+    });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -110,15 +301,13 @@ export const Dashboard = () => {
         setLoading({ isLoading: true, error: null });
         
         // Fetch all data in parallel
-        const [customersData, statsData, salesDataResult] = await Promise.all([
-          apiService.getCustomers(),
+        const [statsData, salesTransactionsResult] = await Promise.all([
           apiService.getDashboardStats(),
-          apiService.getSalesData()
+          apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
         ]);
 
-        setCustomers(customersData);
         setDashboardStats(statsData);
-        setSalesData(salesDataResult);
+        setSalesTransactions(salesTransactionsResult.data || []);
         setLoading({ isLoading: false, error: null });
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -129,52 +318,77 @@ export const Dashboard = () => {
     fetchData();
   }, []);
 
-  const handleSeedData = async () => {
+  // Calculate month-over-month changes
+  const monthData = getMonthData(salesTransactions);
+  const revenueChange = calculatePercentageChange(monthData.currentMonthRevenue, monthData.previousMonthRevenue);
+  const customersChange = calculatePercentageChange(monthData.currentMonthCustomers, monthData.previousMonthCustomers);
+  const avgOrderChange = calculatePercentageChange(monthData.currentMonthAvgOrder, monthData.previousMonthAvgOrder);
+
+  // Get most sold product
+  const mostSoldProduct = getMostSoldProduct(salesTransactions);
+
+  // Calculate sales trend data from actual transactions
+  const actualSalesTrendData = calculateSalesTrendData(salesTransactions);
+
+  // Handle logout
+  const handleLogout = async () => {
     try {
-      setLoading({ isLoading: true, error: null });
-      await apiService.seedData();
-      // Refresh data after seeding
-      const [customersData, statsData, salesDataResult] = await Promise.all([
-        apiService.getCustomers(),
-        apiService.getDashboardStats(),
-        apiService.getSalesData()
-      ]);
-      setCustomers(customersData);
-      setDashboardStats(statsData);
-      setSalesData(salesDataResult);
-      setLoading({ isLoading: false, error: null });
+      // Call logout API to revoke refresh token and clear cookies
+      await apiService.logout();
     } catch (error) {
-      console.error('Error seeding data:', error);
-      setLoading({ isLoading: false, error: error instanceof Error ? error.message : 'Failed to seed data' });
+      console.error('Error during logout:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear authentication data
+      localStorage.removeItem("user");
+      localStorage.removeItem("isAuthenticated");
+      
+      // Redirect to login page
+      window.location.href = "/login";
     }
   };
 
   return (
     <div className="app-container">
       <div className="main-content">
-        <div className="sidebar">
+        <div className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
           <div className="sidebar-header">
-            <h2>Dashboard</h2>
-          </div>
-          <div className={`nav-item ${activeTab === "home" ? "active" : ""}`} onClick={() => setActiveTab("home")}>
-            📊 Overview
-          </div>
-          <div className={`nav-item ${activeTab === "sales" ? "active" : ""}`} onClick={() => setActiveTab("sales")}>
-            💰 Sales
-          </div>
-          <div className={`nav-item ${activeTab === "customers" ? "active" : ""}`} onClick={() => setActiveTab("customers")}>
-            👥 Customers
-          </div>
-          <div className="nav-item">
-            📈 Analytics
-          </div>
-          <div className="sidebar-footer">
-            <button 
-              className="seed-button" 
-              onClick={handleSeedData}
-              disabled={loading.isLoading}
+            {!sidebarCollapsed && <h2>Dashboard</h2>}
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {loading.isLoading ? "⏳ Loading..." : "🌱 Seed Data"}
+              {sidebarCollapsed ? "»" : "«"}
+            </button>
+          </div>
+
+          {visibleNavItems.map((item) => (
+            <div
+              key={item.id}
+              className={`nav-item ${activeTab === item.id ? "active" : ""}`}
+              onClick={() => handleTabChange(item.id)}
+              title={item.label}
+            >
+              <span className="nav-item-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="nav-item-label">{item.label}</span>
+            </div>
+          ))}
+
+          <div className="sidebar-footer">
+            <button
+              className="logout-button"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <span className="nav-item-icon" aria-hidden="true">
+                🚪
+              </span>
+              <span className="nav-item-label">Logout</span>
             </button>
           </div>
         </div>
@@ -193,7 +407,7 @@ export const Dashboard = () => {
                 🔄 Retry
               </button>
             </div>
-          ) : activeTab === "home" ? (
+          ) : activeTab === "home" && isAdmin() ? (
             <div className="dashboard-content">
               <div className="dashboard-header">
                 <h1>Customer Management Dashboard</h1>
@@ -204,26 +418,26 @@ export const Dashboard = () => {
                 <div className="stats-grid">
                   <StatCard 
                     title="Total Revenue" 
-                    value={`$${dashboardStats.totalRevenue.toLocaleString()}`} 
-                    change="+12% from last month" 
+                    value={`IDR ${dashboardStats.totalRevenue.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
+                    change={revenueChange} 
                     icon="💰"
                   />
                   <StatCard 
                     title="Total Customers" 
                     value={dashboardStats.totalCustomers.toString()} 
-                    change="+8% from last month" 
+                    change={customersChange} 
                     icon="👥"
                   />
                   <StatCard 
-                    title="Active Customers" 
-                    value={dashboardStats.activeCustomers.toString()} 
-                    change="+5% from last month" 
-                    icon="✅"
+                    title="Most Sold Product" 
+                    value={mostSoldProduct ? mostSoldProduct.name : "No sales yet"} 
+                    change={mostSoldProduct ? `${mostSoldProduct.count} sales` : ""} 
+                    icon="🏆"
                   />
                   <StatCard 
                     title="Avg Order Value" 
-                    value={`$${Math.round(dashboardStats.avgOrderValue).toLocaleString()}`} 
-                    change="+3% from last month" 
+                    value={`IDR ${Math.round(dashboardStats.avgOrderValue).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
+                    change={avgOrderChange} 
                     icon="📊"
                   />
                 </div>
@@ -231,62 +445,29 @@ export const Dashboard = () => {
 
               <div className="dashboard-grid">
                 <div className="chart-section">
-                  <SimpleChart data={salesData} title="Sales Trend (Last 6 Months)" />
+                  <SimpleChart data={actualSalesTrendData} title="Sales Trend (Last 6 Months)" />
                 </div>
                 <div className="table-section">
-                  <CustomerTable customers={customers} />
+                  <ProductSalesTable sales={salesTransactions} />
                 </div>
               </div>
             </div>
-          ) : activeTab === "sales" ? (
-            <div className="dashboard-content">
-              <div className="dashboard-header">
-                <h1>Sales Analytics</h1>
-                <p>Detailed sales performance and customer insights.</p>
-              </div>
-              
-              <div className="sales-grid">
-                <div className="sales-chart">
-                  <SimpleChart data={salesData} title="Monthly Sales Performance" />
-                </div>
-                <div className="customer-insights">
-                  <h3>Customer Insights</h3>
-                  <div className="insight-cards">
-                    <div className="insight-card">
-                      <h4>Top Customer</h4>
-                      <p>{customers.length > 0 ? customers.reduce((top, customer) => {
-                        const customerTotal = customer.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                        const topTotal = top.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0;
-                        return customerTotal > topTotal ? customer : top;
-                      }).name : "N/A"}</p>
-                      <span>${customers.length > 0 ? Math.max(...customers.map(c => c.sales?.reduce((sum, sale) => sum + sale.amount, 0) || 0)).toLocaleString() : "0"}</span>
-                    </div>
-                    <div className="insight-card">
-                      <h4>Total Orders</h4>
-                      <p>{customers.reduce((sum, customer) => sum + (customer.sales?.length || 0), 0)}</p>
-                      <span>All time</span>
-                    </div>
-                    <div className="insight-card">
-                      <h4>Active Rate</h4>
-                      <p>{dashboardStats ? Math.round((dashboardStats.activeCustomers / dashboardStats.totalCustomers) * 100) : 0}%</p>
-                      <span>Last 30 days</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : activeTab === "customers" ? (
-            <div className="dashboard-content">
-              <div className="dashboard-header">
-                <h1>Customer Management</h1>
-                <p>Manage your customer database and view detailed information.</p>
-              </div>
-              
-              <div className="customers-section">
-                <CustomerTable customers={customers} />
-              </div>
-            </div>
-          ) : null}
+          ) : activeTab === "sales" && isAdmin() ? (
+            <SalesPage />
+          ) : activeTab === "customers" && isAdmin() ? (
+            <Customers />
+          ) : activeTab === "cashier" ? (
+            <Cashier />
+          ) : activeTab === "finance" && isAdmin() ? (
+            <Expense />
+          ) : activeTab === "product" && isAdmin() ? (
+            <ProductPage />
+          ) : activeTab === "user" && isAdmin() ? (
+            <UserPage />
+          ) : (
+            // Fallback: If Sales user tries to access restricted tab, show cashier
+            <Cashier />
+          )}
         </div>
       </div>
     </div>

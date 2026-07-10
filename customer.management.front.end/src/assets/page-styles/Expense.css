@@ -1,0 +1,90 @@
+/* Expense Page Styles */
+.finance-section-header {
+  margin-bottom: 1rem;
+}
+
+.finance-section-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.expense-actions-row {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.new-expense-btn {
+    padding: 0.75rem 1.5rem;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: lowercase;
+}
+
+.new-expense-btn:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.new-expense-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+/* Improve filter layout spacing */
+.sales-report-filters {
+    gap: 1rem;
+}
+
+.sales-report-filters .filter-group {
+    min-width: 150px;
+}
+
+.sales-report-filters input[type="text"],
+.sales-report-filters input[type="number"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.sales-report-filters input[type="text"]:focus,
+.sales-report-filters input[type="number"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .expense-header-content {
+        flex-direction: column;
+    }
+    
+    .new-expense-btn {
+        align-self: flex-start;
+    }
+    
+    .sales-report-filters .filter-group {
+        width: 100%;
+        min-width: unset;
+    }
+}
+

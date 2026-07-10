@@ -15,6 +15,11 @@ namespace customer.management.data.entity.DbContext
         public DbSet<CustomerTrafficModelEntity> CustomerTraffic { get; set; }
         public DbSet<ProductsModelEntity> Products { get; set; }
         public DbSet<SalesTransactionItemModelEntity> SalesTransactionItems { get; set; }
+        public DbSet<CapitalCashModelEntity> CapitalCash { get; set; }
+        public DbSet<ExpenseModelEntity> Expenses { get; set; }
+        public DbSet<SalesAllocationModelEntity> SalesAllocations { get; set; }
+        public DbSet<CashFlowModelEntity> CashFlows { get; set; }
+        public DbSet<RefreshTokenModelEntity> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,6 +70,7 @@ namespace customer.management.data.entity.DbContext
                 entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => e.TransactionId);
                 
                 // Configure relationship with Customer
                 entity.HasOne(e => e.Customer)
@@ -112,6 +118,70 @@ namespace customer.management.data.entity.DbContext
                       .WithMany(p => p.TransactionItems)
                       .HasForeignKey(e => e.ProductId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CapitalCashModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Balance).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<ExpenseModelEntity>(entity =>
+            {
+                entity.ToTable("Expenses");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ExpenseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<SalesAllocationModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.ToCapital).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ToOwner).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.AllocationDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Relationship to Sales (your SQL didn't add FK, but EF can still model it)
+                entity.HasOne(e => e.SalesTransaction)
+                      .WithMany()
+                      .HasForeignKey(e => e.SalesTransactionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CashFlowModelEntity>(entity =>
+            {
+                entity.ToTable("CashFlow");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.FlowDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Optional: enforce max length at DB level if migrations are used
+                entity.Property(e => e.FlowType).HasMaxLength(20);
+            });
+
+            // Configure RefreshToken entity
+            modelBuilder.Entity<RefreshTokenModelEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                // Index for faster lookups
+                entity.HasIndex(e => e.Token).IsUnique();
+                entity.HasIndex(e => e.UserId);
             });
         }
     }
