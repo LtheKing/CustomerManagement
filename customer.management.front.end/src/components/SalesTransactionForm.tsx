@@ -32,7 +32,6 @@ const calculateAmount = (price: number, quantity: number): number => {
 
 const resetFormState = () => ({
   selectedProductId: null as string | null,
-  quantity: 1,
   cart: [] as CartItem[],
   customerName: DEFAULT_CUSTOMER_NAME,
   submitError: null as string | null,
@@ -46,7 +45,6 @@ export function SalesTransactionForm({
   isLoading = false,
 }: SalesTransactionFormProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState(DEFAULT_CUSTOMER_NAME);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +61,6 @@ export function SalesTransactionForm({
     [activeProducts, selectedProductId]
   );
 
-  const lineTotal = selectedProduct ? calculateAmount(selectedProduct.price, quantity) : 0;
   const cartGrandTotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.amount, 0),
     [cart]
@@ -84,7 +81,6 @@ export function SalesTransactionForm({
   const clearCart = () => {
     const reset = resetFormState();
     setSelectedProductId(reset.selectedProductId);
-    setQuantity(reset.quantity);
     setCart(reset.cart);
     setCustomerName(reset.customerName);
     setSubmitError(reset.submitError);
@@ -98,19 +94,8 @@ export function SalesTransactionForm({
     }
 
     setSelectedProductId(productId);
-    setQuantity(1);
     setCartError(null);
     setSubmitError(null);
-  };
-
-  const handleQuantityChange = (nextQuantity: number) => {
-    if (!selectedProduct) {
-      return;
-    }
-
-    const maxQuantity = getAvailableStock(selectedProduct);
-    const clampedQuantity = Math.min(Math.max(1, nextQuantity), maxQuantity);
-    setQuantity(clampedQuantity);
   };
 
   const handleAddToCart = () => {
@@ -120,18 +105,17 @@ export function SalesTransactionForm({
     }
 
     const availableStock = getAvailableStock(selectedProduct);
-    if (quantity <= 0 || quantity > availableStock) {
-      setCartError(`Quantity must be between 1 and ${availableStock}.`);
+    if (availableStock <= 0) {
+      setCartError("No more stock available for this product.");
       return;
     }
 
-    const amount = calculateAmount(selectedProduct.price, quantity);
     setCart((currentCart) => {
       const existingIndex = currentCart.findIndex((item) => item.productId === selectedProduct.id);
 
       if (existingIndex >= 0) {
         const updatedCart = [...currentCart];
-        const newQuantity = updatedCart[existingIndex].quantity + quantity;
+        const newQuantity = updatedCart[existingIndex].quantity + 1;
         updatedCart[existingIndex] = {
           ...updatedCart[existingIndex],
           quantity: newQuantity,
@@ -147,15 +131,14 @@ export function SalesTransactionForm({
           productName: selectedProduct.name,
           imageUrl: selectedProduct.imageUrl,
           unitPrice: selectedProduct.price,
-          quantity,
-          amount,
+          quantity: 1,
+          amount: calculateAmount(selectedProduct.price, 1),
           maxStock: selectedProduct.stock,
         },
       ];
     });
 
     setSelectedProductId(null);
-    setQuantity(1);
     setCartError(null);
     setSubmitError(null);
   };
@@ -242,6 +225,7 @@ export function SalesTransactionForm({
       <form onSubmit={handleSubmit} className="sales-transaction-form">
         <div className="sales-transaction-body">
           {submitError && <div className="form-error-message">{submitError}</div>}
+          {cartError && <div className="form-error-message">{cartError}</div>}
 
           <div className="sales-pos-layout">
             <section className="sales-pos-products sales-transaction-section">
@@ -263,192 +247,125 @@ export function SalesTransactionForm({
                     const isOutOfStock = availableStock <= 0;
 
                     return (
-                      <button
+                      <div
                         key={product.id}
-                        type="button"
                         className={`product-picker-card ${isSelected ? "selected" : ""} ${isOutOfStock ? "out-of-stock" : ""}`}
-                        onClick={() => handleProductSelect(product.id)}
-                        disabled={isOutOfStock || isSubmitting}
                       >
-                        <div className="product-picker-image-wrap">
-                          {imageUrl ? (
-                            <img src={imageUrl} alt={product.name} className="product-picker-image" />
-                          ) : (
-                            <span className="product-picker-image-placeholder">📦</span>
-                          )}
-                        </div>
-                        <div className="product-picker-info">
-                          <span className="product-picker-name">{product.name}</span>
-                          <span className="product-picker-price">{formatCurrency(product.price)}</span>
-                          <span className="product-picker-stock">
-                            {isOutOfStock ? "In cart" : `Stock: ${availableStock}`}
-                          </span>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          className="product-picker-select"
+                          onClick={() => handleProductSelect(product.id)}
+                          disabled={isOutOfStock || isSubmitting}
+                        >
+                          <div className="product-picker-image-wrap">
+                            {imageUrl ? (
+                              <img src={imageUrl} alt={product.name} className="product-picker-image" />
+                            ) : (
+                              <span className="product-picker-image-placeholder">📦</span>
+                            )}
+                          </div>
+                          <div className="product-picker-info">
+                            <span className="product-picker-name">{product.name}</span>
+                            <span className="product-picker-price">{formatCurrency(product.price)}</span>
+                            <span className="product-picker-stock">
+                              {isOutOfStock ? "In cart" : `Stock: ${availableStock}`}
+                            </span>
+                          </div>
+                        </button>
+
+                        {isSelected && !isOutOfStock && (
+                          <button
+                            type="button"
+                            className="btn-add-to-cart product-picker-add"
+                            onClick={handleAddToCart}
+                            disabled={isSubmitting}
+                          >
+                            Pick
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               )}
             </section>
 
-            <div className="sales-pos-sidebar">
-              <section className="sales-pos-quantity sales-transaction-section sales-transaction-checkout">
-                <div className="sales-transaction-section-header">
-                  <h3>2. Set quantity</h3>
-                </div>
+            <section className="sales-pos-cart sales-transaction-section sales-transaction-cart-section">
+              <div className="sales-transaction-section-header">
+                <h3>2. Cart</h3>
+                <span>{cartItemCount} item{cartItemCount === 1 ? "" : "s"}</span>
+              </div>
 
-                {selectedProduct ? (
-                  <>
-                    <div className="sales-transaction-selected-product">
-                      <div className="sales-transaction-selected-image-wrap">
-                        {getProductImageUrl(selectedProduct.imageUrl) ? (
+              {cart.length === 0 ? (
+                <div className="sales-transaction-cart-empty">
+                  No items yet. Select a product and tap Pick.
+                </div>
+              ) : (
+                <div className="sales-transaction-cart-list">
+                  {cart.map((item) => (
+                    <div key={item.productId} className="sales-transaction-cart-item">
+                      <div className="sales-transaction-cart-item-image-wrap">
+                        {getProductImageUrl(item.imageUrl) ? (
                           <img
-                            src={getProductImageUrl(selectedProduct.imageUrl) || undefined}
-                            alt={selectedProduct.name}
-                            className="sales-transaction-selected-image"
+                            src={getProductImageUrl(item.imageUrl) || undefined}
+                            alt={item.productName}
+                            className="sales-transaction-cart-item-image"
                           />
                         ) : (
                           <span className="product-picker-image-placeholder">📦</span>
                         )}
                       </div>
-                      <div className="sales-transaction-selected-details">
-                        <strong>{selectedProduct.name}</strong>
-                        <span>{formatCurrency(selectedProduct.price)} each</span>
-                      </div>
-                    </div>
 
-                    <div className="sales-transaction-checkout-row">
-                      <div className="sales-transaction-quantity-row">
-                        <label htmlFor="sales-quantity">Quantity</label>
+                      <div className="sales-transaction-cart-item-details">
+                        <strong>{item.productName}</strong>
+                        <span>{formatCurrency(item.unitPrice)} each</span>
+                      </div>
+
+                      <div className="sales-transaction-cart-item-controls">
                         <div className="sales-transaction-quantity-controls">
                           <button
                             type="button"
                             className="quantity-btn"
-                            onClick={() => handleQuantityChange(quantity - 1)}
-                            disabled={quantity <= 1 || isSubmitting}
+                            onClick={() => handleCartQuantityChange(item.productId, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || isSubmitting}
                           >
                             −
                           </button>
                           <input
-                            id="sales-quantity"
                             type="number"
                             min={1}
-                            max={getAvailableStock(selectedProduct)}
-                            value={quantity}
-                            onChange={(event) => handleQuantityChange(Number(event.target.value))}
+                            max={item.maxStock}
+                            value={item.quantity}
+                            onChange={(event) =>
+                              handleCartQuantityChange(item.productId, Number(event.target.value))
+                            }
                             disabled={isSubmitting}
+                            aria-label={`Quantity for ${item.productName}`}
                           />
                           <button
                             type="button"
                             className="quantity-btn"
-                            onClick={() => handleQuantityChange(quantity + 1)}
-                            disabled={quantity >= getAvailableStock(selectedProduct) || isSubmitting}
+                            onClick={() => handleCartQuantityChange(item.productId, item.quantity + 1)}
+                            disabled={item.quantity >= item.maxStock || isSubmitting}
                           >
                             +
                           </button>
                         </div>
-                      </div>
-
-                      <div className="sales-transaction-total">
-                        <span>Line total</span>
-                        <strong>{formatCurrency(lineTotal)}</strong>
+                        <strong className="sales-transaction-cart-item-total">{formatCurrency(item.amount)}</strong>
+                        <button
+                          type="button"
+                          className="sales-transaction-cart-remove"
+                          onClick={() => handleRemoveFromCart(item.productId)}
+                          disabled={isSubmitting}
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
-
-                    {cartError && <div className="sales-transaction-cart-error">{cartError}</div>}
-
-                    <button
-                      type="button"
-                      className="btn-add-to-cart"
-                      onClick={handleAddToCart}
-                      disabled={isSubmitting}
-                    >
-                      Add to Cart
-                    </button>
-                  </>
-                ) : (
-                  <div className="sales-pos-quantity-empty">
-                    Select a product from the left to set quantity.
-                  </div>
-                )}
-              </section>
-
-              <section className="sales-pos-cart sales-transaction-section sales-transaction-cart-section">
-                <div className="sales-transaction-section-header">
-                  <h3>3. Cart</h3>
-                  <span>{cartItemCount} item{cartItemCount === 1 ? "" : "s"}</span>
+                  ))}
                 </div>
-
-                {cart.length === 0 ? (
-                  <div className="sales-transaction-cart-empty">No items yet. Pick a product and add it to the cart.</div>
-                ) : (
-                  <div className="sales-transaction-cart-list">
-                    {cart.map((item) => (
-                      <div key={item.productId} className="sales-transaction-cart-item">
-                        <div className="sales-transaction-cart-item-image-wrap">
-                          {getProductImageUrl(item.imageUrl) ? (
-                            <img
-                              src={getProductImageUrl(item.imageUrl) || undefined}
-                              alt={item.productName}
-                              className="sales-transaction-cart-item-image"
-                            />
-                          ) : (
-                            <span className="product-picker-image-placeholder">📦</span>
-                          )}
-                        </div>
-
-                        <div className="sales-transaction-cart-item-details">
-                          <strong>{item.productName}</strong>
-                          <span>{formatCurrency(item.unitPrice)} each</span>
-                        </div>
-
-                        <div className="sales-transaction-cart-item-controls">
-                          <div className="sales-transaction-quantity-controls">
-                            <button
-                              type="button"
-                              className="quantity-btn"
-                              onClick={() => handleCartQuantityChange(item.productId, item.quantity - 1)}
-                              disabled={item.quantity <= 1 || isSubmitting}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={1}
-                              max={item.maxStock}
-                              value={item.quantity}
-                              onChange={(event) =>
-                                handleCartQuantityChange(item.productId, Number(event.target.value))
-                              }
-                              disabled={isSubmitting}
-                              aria-label={`Quantity for ${item.productName}`}
-                            />
-                            <button
-                              type="button"
-                              className="quantity-btn"
-                              onClick={() => handleCartQuantityChange(item.productId, item.quantity + 1)}
-                              disabled={item.quantity >= item.maxStock || isSubmitting}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <strong className="sales-transaction-cart-item-total">{formatCurrency(item.amount)}</strong>
-                          <button
-                            type="button"
-                            className="sales-transaction-cart-remove"
-                            onClick={() => handleRemoveFromCart(item.productId)}
-                            disabled={isSubmitting}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-              </section>
-            </div>
+              )}
+            </section>
           </div>
         </div>
 
