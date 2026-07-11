@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import Login from "./pages/Login";
+import { getApiBaseUrl } from "./utils/apiConfig";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -18,10 +19,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
       // Verify token is still valid by checking current user
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-          (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
-        
-        const response = await fetch(`${API_BASE_URL}/user/me`, {
+        const response = await fetch(`${getApiBaseUrl()}/user/me`, {
           method: 'GET',
           credentials: 'include',
           headers: {
