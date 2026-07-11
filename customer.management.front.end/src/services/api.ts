@@ -23,10 +23,9 @@ import {
   AddStockRequest,
   AddStockResult
 } from '../types';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
+const API_BASE_URL = getApiBaseUrl();
 
 const mapProduct = (product: any): Product => ({
   id: product.Id || product.id,

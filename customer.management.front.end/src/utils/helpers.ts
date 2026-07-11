@@ -1,4 +1,5 @@
 import { Customer } from "../types";
+import { getApiOrigin } from "./apiConfig";
 
 // Utility functions with proper TypeScript typing
 
@@ -35,13 +36,7 @@ export const filterCustomersByEmail = (customers: Customer[], email: string): Cu
   );
 };
 
-export const getApiOrigin = (): string => {
-  const baseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.DEV ? 'https://localhost:44372/api' : '');
-
-  return baseUrl.replace(/\/api\/?$/, '');
-};
+export { getApiOrigin };
 
 export const getProductImageUrl = (imageUrl?: string | null): string | null => {
   if (!imageUrl) {
