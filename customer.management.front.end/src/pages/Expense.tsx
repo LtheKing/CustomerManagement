@@ -4,7 +4,7 @@ import { GenericForm, FormField } from "../components/GenericForm";
 import { apiService } from "../services/api";
 import { CashFlow, CreateCashFlowRequest, PagedResult } from "../types";
 import type { Expense as ExpenseType } from "../types";
-import { isAdmin } from "../utils/auth";
+import { getCurrentUser, isAdmin } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 import "../assets/page-styles/Expense.css";
@@ -139,6 +139,7 @@ export const Expense = () => {
       amount: Number(data.amount),
       info: data.info || "",
       flowDate,
+      performedByUserId: getCurrentUser()?.id,
     };
 
     return apiService.createCashFlow(request);
@@ -366,7 +367,7 @@ export const Expense = () => {
       throw new Error("Amount must be greater than 0");
     }
 
-    await apiService.createExpense(description.trim(), amount, expenseDate);
+    await apiService.createExpense(description.trim(), amount, expenseDate, getCurrentUser()?.id);
   };
 
   const handleExpenseSuccess = () => {

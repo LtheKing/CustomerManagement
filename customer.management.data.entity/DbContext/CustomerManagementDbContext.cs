@@ -20,6 +20,7 @@ namespace customer.management.data.entity.DbContext
         public DbSet<SalesAllocationModelEntity> SalesAllocations { get; set; }
         public DbSet<CashFlowModelEntity> CashFlows { get; set; }
         public DbSet<RefreshTokenModelEntity> RefreshTokens { get; set; }
+        public DbSet<UserActivityModelEntity> UserActivities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -182,6 +183,26 @@ namespace customer.management.data.entity.DbContext
                 // Index for faster lookups
                 entity.HasIndex(e => e.Token).IsUnique();
                 entity.HasIndex(e => e.UserId);
+            });
+
+            modelBuilder.Entity<UserActivityModelEntity>(entity =>
+            {
+                entity.ToTable("UserActivities");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Action).HasMaxLength(50);
+                entity.Property(e => e.EntityType).HasMaxLength(50);
+                entity.Property(e => e.Details).HasMaxLength(1000);
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.Action);
+                entity.HasIndex(e => e.CreatedAt);
             });
         }
     }

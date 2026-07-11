@@ -18,7 +18,10 @@ import {
   LoginResponse,
   User,
   CreateUserRequest,
-  UpdateUserRequest
+  UpdateUserRequest,
+  UserActivity,
+  AddStockRequest,
+  AddStockResult
 } from '../types';
 
 const API_BASE_URL =
@@ -244,10 +247,12 @@ class ApiService {
       Amount: request.amount,
       Info: request.info || "",
       FlowDate: request.flowDate,
+      PerformedByUserId: request.performedByUserId || null,
     };
 
     const response = await fetch(`${API_BASE_URL}/CashFlow`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -350,7 +355,7 @@ class ApiService {
     }
   }
 
-  async createExpense(description: string, amount: number, expenseDate?: string): Promise<any> {
+  async createExpense(description: string, amount: number, expenseDate?: string, performedByUserId?: string): Promise<any> {
     const requestBody: any = {
       Description: description,
       Amount: amount,
@@ -360,8 +365,13 @@ class ApiService {
       requestBody.ExpenseDate = expenseDate;
     }
 
+    if (performedByUserId) {
+      requestBody.PerformedByUserId = performedByUserId;
+    }
+
     const response = await fetch(`${API_BASE_URL}/Expense`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -719,6 +729,7 @@ class ApiService {
   async deleteProduct(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/Product/${id}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -734,6 +745,88 @@ class ApiService {
       }
       throw new Error(errorMessage);
     }
+  }
+
+  async addStock(request: AddStockRequest): Promise<AddStockResult> {
+    const requestBody = {
+      ProductId: request.productId,
+      Quantity: request.quantity,
+      Note: request.note || null,
+      PerformedByUserId: request.performedByUserId || null,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/Product/add-stock`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return {
+      productId: result.ProductId || result.productId,
+      productName: result.ProductName || result.productName,
+      previousStock: result.PreviousStock ?? result.previousStock ?? 0,
+      addedQuantity: result.AddedQuantity ?? result.addedQuantity ?? 0,
+      newStock: result.NewStock ?? result.newStock ?? 0,
+    };
+  }
+
+  async getUserActivities(params: {
+    page?: number;
+    pageSize?: number;
+    userId?: string;
+    action?: string;
+    username?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<PagedResult<UserActivity>> {
+    const query = new URLSearchParams();
+    query.set('page', String(params.page ?? 1));
+    query.set('pageSize', String(params.pageSize ?? 20));
+    if (params.userId) query.set('userId', params.userId);
+    if (params.action) query.set('action', params.action);
+    if (params.username) query.set('username', params.username);
+    if (params.startDate) query.set('startDate', params.startDate);
+    if (params.endDate) query.set('endDate', params.endDate);
+
+    const result = await this.fetchData<any>(`/UserActivity?${query.toString()}`);
+    const data = (result.data || result.Data || []).map((item: any): UserActivity => ({
+      id: item.id || item.Id,
+      userId: item.userId || item.UserId,
+      username: item.username || item.Username || 'Unknown',
+      action: item.action || item.Action,
+      entityType: item.entityType || item.EntityType,
+      entityId: item.entityId ?? item.EntityId ?? null,
+      details: item.details ?? item.Details ?? null,
+      createdAt: item.createdAt || item.CreatedAt,
+    }));
+
+    return {
+      data,
+      totalCount: result.totalCount ?? result.TotalCount ?? data.length,
+      page: result.page ?? result.Page ?? params.page ?? 1,
+      pageSize: result.pageSize ?? result.PageSize ?? params.pageSize ?? 20,
+      totalPages: result.totalPages ?? result.TotalPages ?? 1,
+      hasPreviousPage: result.hasPreviousPage ?? result.HasPreviousPage ?? false,
+      hasNextPage: result.hasNextPage ?? result.HasNextPage ?? false,
+    };
   }
 
   // User authentication endpoints

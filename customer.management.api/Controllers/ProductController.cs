@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using customer.management.api.Helpers;
 using customer.management.api.Interfaces;
 using customer.management.api.Models;
 
@@ -24,7 +25,7 @@ namespace customer.management.api.Controllers
             try
             {
                 IEnumerable<ProductDto> result;
-                
+
                 if (activeOnly)
                 {
                     result = await _productService.GetActiveProductsAsync();
@@ -33,7 +34,7 @@ namespace customer.management.api.Controllers
                 {
                     result = await _productService.GetAllProductsAsync();
                 }
-                
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -62,6 +63,31 @@ namespace customer.management.api.Controllers
             }
         }
 
+        // POST: api/product/add-stock
+        [HttpPost("add-stock")]
+        public async Task<ActionResult<AddStockResultDto>> AddStock(AddStockDto addStockDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var performedBy = ActorHelper.GetPerformedByUserId(this, addStockDto.PerformedByUserId);
+                var result = await _productService.AddStockAsync(addStockDto, performedBy);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while adding stock", details = ex.Message });
+            }
+        }
+
         // GET: api/product/5
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ProductDto>> GetProduct(Guid id)
@@ -69,12 +95,12 @@ namespace customer.management.api.Controllers
             try
             {
                 var result = await _productService.GetProductByIdAsync(id);
-                
+
                 if (result == null)
                 {
                     return NotFound(new { error = $"Product with ID {id} not found" });
                 }
-                
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -138,7 +164,7 @@ namespace customer.management.api.Controllers
             try
             {
                 var deleted = await _productService.DeleteProductAsync(id);
-                
+
                 if (!deleted)
                 {
                     return NotFound(new { error = $"Product with ID {id} not found" });
@@ -157,4 +183,3 @@ namespace customer.management.api.Controllers
         }
     }
 }
-

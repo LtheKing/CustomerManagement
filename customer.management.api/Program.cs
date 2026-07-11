@@ -247,6 +247,7 @@ builder.Services.AddAuthorization(options =>
 // SERVICES
 // ----------------------------------------------------
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
+builder.Services.AddScoped<IUserActivityService, UserActivityService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductImageService, ProductImageService>();
 builder.Services.AddScoped<ISalesService, SalesService>();

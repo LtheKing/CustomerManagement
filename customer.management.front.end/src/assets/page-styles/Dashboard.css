@@ -120,6 +120,33 @@
     font-weight: 500;
 }
 
+.nav-item-chevron {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    transition: transform 0.2s ease;
+}
+
+.nav-item-chevron.open {
+    transform: rotate(180deg);
+}
+
+.nav-submenu {
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+}
+
+.nav-subitem {
+    padding-left: 2.75rem !important;
+    font-size: 0.925rem;
+    border-bottom: 1px solid #1e293b;
+}
+
+.nav-subitem-collapsed {
+    border-bottom: 1px solid #334155;
+}
+
 .content-panel {
     flex: 1;
     background-color: #f8fafc;

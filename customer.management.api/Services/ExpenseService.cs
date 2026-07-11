@@ -9,10 +9,12 @@ namespace customer.management.api.Services
     public class ExpenseService : IExpenseService
     {
         private readonly CustomerManagementDbContext _context;
+        private readonly IUserActivityService _userActivityService;
 
-        public ExpenseService(CustomerManagementDbContext context)
+        public ExpenseService(CustomerManagementDbContext context, IUserActivityService userActivityService)
         {
             _context = context;
+            _userActivityService = userActivityService;
         }
 
         /// <summary>
@@ -87,7 +89,7 @@ namespace customer.management.api.Services
         /// All operations are wrapped in a database transaction for atomicity
         /// Uses execution strategy to support retry on failure
         /// </summary>
-        public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseDto createDto)
+        public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseDto createDto, Guid? performedByUserId)
         {
             // Use execution strategy to support retry on failure with transactions
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -129,6 +131,16 @@ namespace customer.management.api.Services
 
                     // Commit transaction - all operations succeed
                     await transaction.CommitAsync();
+
+                    if (performedByUserId.HasValue)
+                    {
+                        await _userActivityService.LogAsync(
+                            performedByUserId.Value,
+                            "CREATE_EXPENSE",
+                            "Expense",
+                            expense.Id,
+                            $"Created expense '{expense.Description}' for {expense.Amount:N2}");
+                    }
 
                     // Return as DTO
                     return MapToDto(expense);

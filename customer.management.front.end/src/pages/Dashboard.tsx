@@ -6,9 +6,37 @@ import { Sales as SalesPage } from "./Sales";
 import { Customers } from "./Customers";
 import { Expense } from "./Expense";
 import { ProductPage } from "./Product";
+import { AddStockPage } from "./AddStock";
 import { UserPage } from "./User";
 import { isAdmin, isSales } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
+
+type NavItem = {
+  id: string;
+  label: string;
+  icon: string;
+  adminOnly?: boolean;
+  children?: { id: string; label: string; icon: string; adminOnly?: boolean }[];
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "home", label: "Overview", icon: "📊", adminOnly: true },
+  { id: "sales", label: "Sales", icon: "💰", adminOnly: true },
+  { id: "customers", label: "Customers", icon: "👥", adminOnly: true },
+  { id: "cashier", label: "Cashier", icon: "🧾" },
+  { id: "finance", label: "Finance", icon: "💸", adminOnly: true },
+  {
+    id: "product",
+    label: "Products",
+    icon: "📦",
+    adminOnly: true,
+    children: [{ id: "add-stock", label: "Add Stock", icon: "📥", adminOnly: true }],
+  },
+  { id: "user", label: "Users", icon: "👤", adminOnly: true },
+];
+
+const SIDEBAR_COLLAPSED_KEY = "sidebarCollapsed";
+const PRODUCT_NAV_IDS = new Set(["product", "add-stock"]);
 
 const StatCard = ({ title, value, change, icon }: { title: string; value: string; change: string; icon: string }) => (
   <div className="stat-card">
@@ -112,18 +140,6 @@ const ProductSalesTable = ({ sales }: { sales: Sales[] }) => {
   );
 };
 
-const NAV_ITEMS = [
-  { id: "home", label: "Overview", icon: "📊", adminOnly: true },
-  { id: "sales", label: "Sales", icon: "💰", adminOnly: true },
-  { id: "customers", label: "Customers", icon: "👥", adminOnly: true },
-  { id: "cashier", label: "Cashier", icon: "🧾" },
-  { id: "finance", label: "Finance", icon: "💸", adminOnly: true },
-  { id: "product", label: "Products", icon: "📦", adminOnly: true },
-  { id: "user", label: "Users", icon: "👤", adminOnly: true },
-] as const;
-
-const SIDEBAR_COLLAPSED_KEY = "sidebarCollapsed";
-
 export const Dashboard = () => {
   // Set default tab based on user role
   const getDefaultTab = (): string => {
@@ -132,6 +148,7 @@ export const Dashboard = () => {
   };
 
   const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
+  const [productsNavOpen, setProductsNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
   );
@@ -148,6 +165,9 @@ export const Dashboard = () => {
     }
     // Admin can access all tabs
     if (isAdmin() || tab === "cashier") {
+      if (PRODUCT_NAV_IDS.has(tab)) {
+        setProductsNavOpen(true);
+      }
       setActiveTab(tab);
       return;
     }
@@ -163,7 +183,7 @@ export const Dashboard = () => {
     });
   };
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => !("adminOnly" in item) || isAdmin());
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin());
 
   // Helper function to calculate percentage change
   const calculatePercentageChange = (current: number, previous: number): string => {
@@ -365,19 +385,73 @@ export const Dashboard = () => {
             </button>
           </div>
 
-          {visibleNavItems.map((item) => (
-            <div
-              key={item.id}
-              className={`nav-item ${activeTab === item.id ? "active" : ""}`}
-              onClick={() => handleTabChange(item.id)}
-              title={item.label}
-            >
-              <span className="nav-item-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span className="nav-item-label">{item.label}</span>
-            </div>
-          ))}
+          {visibleNavItems.map((item) => {
+            const hasChildren = Boolean(item.children?.length);
+            const childActive = item.children?.some((child) => child.id === activeTab);
+            const isProductGroup = item.id === "product";
+            const isExpanded = isProductGroup && (productsNavOpen || Boolean(childActive) || activeTab === "product");
+            const isActive = activeTab === item.id || Boolean(childActive);
+
+            return (
+              <div key={item.id} className="nav-group">
+                <div
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                  onClick={() => {
+                    if (hasChildren && !sidebarCollapsed) {
+                      setProductsNavOpen((open) => (activeTab === item.id || childActive ? !open : true));
+                    }
+                    handleTabChange(item.id);
+                  }}
+                  title={item.label}
+                >
+                  <span className="nav-item-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="nav-item-label">{item.label}</span>
+                  {hasChildren && !sidebarCollapsed && (
+                    <span className={`nav-item-chevron ${isExpanded ? "open" : ""}`} aria-hidden="true">
+                      ▾
+                    </span>
+                  )}
+                </div>
+
+                {hasChildren && isExpanded && !sidebarCollapsed && (
+                  <div className="nav-submenu">
+                    {item.children!
+                      .filter((child) => !child.adminOnly || isAdmin())
+                      .map((child) => (
+                        <div
+                          key={child.id}
+                          className={`nav-item nav-subitem ${activeTab === child.id ? "active" : ""}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleTabChange(child.id);
+                          }}
+                          title={child.label}
+                        >
+                          <span className="nav-item-icon" aria-hidden="true">
+                            {child.icon}
+                          </span>
+                          <span className="nav-item-label">{child.label}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {hasChildren && sidebarCollapsed && (
+                  <div
+                    className={`nav-item nav-subitem-collapsed ${activeTab === "add-stock" ? "active" : ""}`}
+                    onClick={() => handleTabChange("add-stock")}
+                    title="Add Stock"
+                  >
+                    <span className="nav-item-icon" aria-hidden="true">
+                      📥
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           <div className="sidebar-footer">
             <button
@@ -462,6 +536,8 @@ export const Dashboard = () => {
             <Expense />
           ) : activeTab === "product" && isAdmin() ? (
             <ProductPage />
+          ) : activeTab === "add-stock" && isAdmin() ? (
+            <AddStockPage />
           ) : activeTab === "user" && isAdmin() ? (
             <UserPage />
           ) : (

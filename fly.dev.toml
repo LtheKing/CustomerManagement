@@ -1,0 +1,36 @@
+# Dev / staging API — separate from production (fly.toml).
+# Deploy with: fly deploy -c fly.dev.toml
+# Or: fly deploy -a customer-management-api-dev
+
+app = 'customer-management-api-dev'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'customer.management.api/Dockerfile'
+
+[env]
+  ASPNETCORE_ENVIRONMENT = 'Production'
+  ASPNETCORE_URLS = 'http://+:8080'
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  ipv6 = false
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '10s'
+    grace_period = '30s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256

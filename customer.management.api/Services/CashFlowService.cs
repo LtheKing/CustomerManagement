@@ -9,10 +9,12 @@ namespace customer.management.api.Services
     public class CashFlowService : ICashFlowService
     {
         private readonly CustomerManagementDbContext _context;
+        private readonly IUserActivityService _userActivityService;
 
-        public CashFlowService(CustomerManagementDbContext context)
+        public CashFlowService(CustomerManagementDbContext context, IUserActivityService userActivityService)
         {
             _context = context;
+            _userActivityService = userActivityService;
         }
 
         /// <summary>
@@ -121,7 +123,7 @@ namespace customer.management.api.Services
         /// <summary>
         /// Create a new CashFlow entry
         /// </summary>
-        public async Task<CashFlowDto> CreateCashFlowAsync(CreateCashFlowDto createDto)
+        public async Task<CashFlowDto> CreateCashFlowAsync(CreateCashFlowDto createDto, Guid? performedByUserId)
         {
             // Validate flow type
             var validFlowTypes = new[] { "SALES", "EXPENSE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT" };
@@ -146,6 +148,19 @@ namespace customer.management.api.Services
             // Add to context and save
             _context.CashFlows.Add(cashFlow);
             await _context.SaveChangesAsync();
+
+            if (performedByUserId.HasValue &&
+                (flowTypeUpper == "ADJUSTMENT_IN" || flowTypeUpper == "ADJUSTMENT_OUT"))
+            {
+                var action = flowTypeUpper == "ADJUSTMENT_IN" ? "ADJUST_CAPITAL_IN" : "ADJUST_CAPITAL_OUT";
+                var infoPart = string.IsNullOrWhiteSpace(cashFlow.Info) ? "" : $" Info: {cashFlow.Info}";
+                await _userActivityService.LogAsync(
+                    performedByUserId.Value,
+                    action,
+                    "CashFlow",
+                    cashFlow.Id,
+                    $"{flowTypeUpper} amount {cashFlow.Amount:N2}.{infoPart}");
+            }
 
             // Return as DTO
             return new CashFlowDto

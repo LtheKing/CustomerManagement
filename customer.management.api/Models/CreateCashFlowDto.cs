@@ -20,6 +20,11 @@ namespace customer.management.api.Models
         public string? Info { get; set; } // Optional description/info
 
         public DateTimeOffset? FlowDate { get; set; } // Optional: defaults to current time if not provided
+
+        /// <summary>
+        /// Optional actor for audit logging when JWT claims are unavailable.
+        /// </summary>
+        public Guid? PerformedByUserId { get; set; }
     }
 }
 

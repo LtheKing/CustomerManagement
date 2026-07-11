@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using customer.management.api.Helpers;
 using customer.management.api.Interfaces;
 using customer.management.api.Models;
 
@@ -36,7 +37,8 @@ namespace customer.management.api.Controllers
         {
             try
             {
-                var result = await _expenseService.CreateExpenseAsync(createDto);
+                var performedBy = ActorHelper.GetPerformedByUserId(this, createDto.PerformedByUserId);
+                var result = await _expenseService.CreateExpenseAsync(createDto, performedBy);
                 return CreatedAtAction(nameof(GetExpenses), new { id = result.Id }, result);
             }
             catch (ArgumentException ex)
@@ -50,4 +52,3 @@ namespace customer.management.api.Controllers
         }
     }
 }
-

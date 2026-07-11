@@ -7,6 +7,7 @@ export interface CreateCashFlowRequest {
   amount: number;
   info?: string;
   flowDate: string;
+  performedByUserId?: string;
 }
 
 /**

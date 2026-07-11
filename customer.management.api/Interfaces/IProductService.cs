@@ -9,6 +9,7 @@ namespace customer.management.api.Interfaces
         Task<IEnumerable<ProductDto>> GetActiveProductsAsync();
         Task<ProductDto> CreateProductAsync(CreateProductDto createDto);
         Task<ProductDto> UpdateProductAsync(Guid id, CreateProductDto updateDto);
+        Task<AddStockResultDto> AddStockAsync(AddStockDto addStockDto, Guid? performedByUserId);
         Task<bool> DeleteProductAsync(Guid id);
     }
 }

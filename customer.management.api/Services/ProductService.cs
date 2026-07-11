@@ -10,11 +10,16 @@ namespace customer.management.api.Services
     {
         private readonly CustomerManagementDbContext _context;
         private readonly IProductImageService _productImageService;
+        private readonly IUserActivityService _userActivityService;
 
-        public ProductService(CustomerManagementDbContext context, IProductImageService productImageService)
+        public ProductService(
+            CustomerManagementDbContext context,
+            IProductImageService productImageService,
+            IUserActivityService userActivityService)
         {
             _context = context;
             _productImageService = productImageService;
+            _userActivityService = userActivityService;
         }
 
         /// <summary>
@@ -180,6 +185,52 @@ namespace customer.management.api.Services
             await _context.SaveChangesAsync();
 
             return MapToDto(product);
+        }
+
+        /// <summary>
+        /// Increment product stock and log ADD_STOCK activity
+        /// </summary>
+        public async Task<AddStockResultDto> AddStockAsync(AddStockDto addStockDto, Guid? performedByUserId)
+        {
+            if (addStockDto.Quantity <= 0)
+            {
+                throw new ArgumentException("Quantity must be at least 1.");
+            }
+
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Id == addStockDto.ProductId);
+
+            if (product == null)
+            {
+                throw new ArgumentException($"Product with ID {addStockDto.ProductId} not found.");
+            }
+
+            var previousStock = product.Stock;
+            product.Stock += addStockDto.Quantity;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            var actorId = performedByUserId ?? addStockDto.PerformedByUserId;
+            if (actorId.HasValue)
+            {
+                var notePart = string.IsNullOrWhiteSpace(addStockDto.Note) ? "" : $" Note: {addStockDto.Note.Trim()}";
+                await _userActivityService.LogAsync(
+                    actorId.Value,
+                    "ADD_STOCK",
+                    "Product",
+                    product.Id,
+                    $"Added {addStockDto.Quantity} to '{product.Name}' (SKU: {product.SKU}). Stock {previousStock} → {product.Stock}.{notePart}");
+            }
+
+            return new AddStockResultDto
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                PreviousStock = previousStock,
+                AddedQuantity = addStockDto.Quantity,
+                NewStock = product.Stock
+            };
         }
 
         /// <summary>

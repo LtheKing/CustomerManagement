@@ -20,6 +20,11 @@ namespace customer.management.api.Models
         /// Optional: Expense date. Defaults to current time if not provided
         /// </summary>
         public DateTimeOffset? ExpenseDate { get; set; }
+
+        /// <summary>
+        /// Optional actor for audit logging when JWT claims are unavailable.
+        /// </summary>
+        public Guid? PerformedByUserId { get; set; }
     }
 }
 

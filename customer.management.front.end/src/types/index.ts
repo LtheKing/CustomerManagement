@@ -11,4 +11,5 @@ export * from "./models/Expense";
 export * from "./models/Product";
 export * from "./models/Sales";
 export * from "./models/PagedResult";
+export * from "./models/UserActivity";
 export * from "./models/requests";
