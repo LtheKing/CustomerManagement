@@ -37,6 +37,8 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+    volumes:
+      - product_uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,4 +68,5 @@ networks:
 
 volumes:
   postgres_data_prod:
+  product_uploads:
 

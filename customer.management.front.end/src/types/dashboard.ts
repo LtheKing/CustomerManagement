@@ -11,4 +11,10 @@ export interface SalesData {
   customers: number;
 }
 
+export interface ProductSalesData {
+  productName: string;
+  totalQuantity: number;
+  totalPrice: number;
+}
+
 

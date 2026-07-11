@@ -1,0 +1,153 @@
+/* Customers Page Styles */
+
+.customers-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}
+
+/* Customer Info Bar */
+.customer-info-bar {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.customer-info-content {
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.customer-info-icon {
+    font-size: 1.1rem;
+}
+
+.customer-info-strong {
+    color: #1e293b;
+}
+
+/* Customer Table Container */
+.customer-table-container-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.customer-table-wrapper {
+    margin: 0;
+}
+
+.customer-table-wrapper th {
+    min-width: 120px;
+}
+
+.customer-table-wrapper th.customer-col-name {
+    min-width: 180px;
+}
+
+.customer-table-wrapper th.customer-col-email {
+    min-width: 200px;
+}
+
+.customer-table-wrapper th.customer-col-status {
+    min-width: 120px;
+}
+
+.customer-table-wrapper th.customer-col-last-order {
+    min-width: 140px;
+}
+
+.customer-table-wrapper th.customer-col-total-spent {
+    min-width: 150px;
+}
+
+/* Customer Table Rows */
+.customer-table-row {
+    transition: background-color 0.2s ease;
+}
+
+/* Customer Table Cells */
+.customer-cell-name {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.customer-cell-email {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.customer-cell-email-na {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.customer-cell-last-order {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.customer-cell-total-spent {
+    font-weight: 600;
+    color: #059669;
+}
+
+/* Customer Status Badge */
+.customer-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.customer-status-badge.active {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.customer-status-badge.inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.customer-status-badge.no-orders {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Customer Empty State */
+.customer-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.customer-empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.customer-empty-state-icon {
+    font-size: 2rem;
+}
+

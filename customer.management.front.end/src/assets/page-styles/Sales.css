@@ -1,0 +1,453 @@
+/* Sales Page Tabs */
+.sales-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.sales-tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #64748b;
+    transition: all 0.2s ease;
+    margin-bottom: -2px;
+}
+
+.sales-tab:hover {
+    color: #1e293b;
+    background-color: #f8fafc;
+}
+
+.sales-tab.active {
+    color: #3b82f6;
+    border-bottom-color: #ef4444;
+    font-weight: 600;
+}
+
+/* Sales Report Table */
+.sales-report-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}
+
+.sales-report-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.sales-report-filters .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sales-report-filters label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.sales-report-filters input[type="date"] {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.sales-report-filters input[type="date"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sales-report-filters select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background-color: white;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.sales-report-filters select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sales-report-filters button {
+    padding: 0.5rem 1.5rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    height: fit-content;
+}
+
+.sales-report-filters button:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.sales-report-filters button:active {
+    transform: translateY(0);
+}
+
+.sales-report-filters .clear-filters-btn {
+    background-color: #64748b;
+}
+
+.sales-report-filters .clear-filters-btn:hover {
+    background-color: #475569;
+}
+
+.sales-report-filters .export-excel-btn {
+    background-color: #10b981;
+}
+
+.sales-report-filters .export-excel-btn:hover {
+    background-color: #059669;
+}
+
+.sales-report-filters .export-excel-btn:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.sales-report-filters .refresh-btn {
+    background-color: #6366f1;
+}
+
+.sales-report-filters .refresh-btn:hover {
+    background-color: #4f46e5;
+}
+
+.sales-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow-x: auto;
+}
+
+.sales-report-table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.875rem;
+    background-color: #f9fafb;
+}
+
+.sales-report-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.sales-report-table tr:hover {
+    background-color: #f9fafb;
+}
+
+.sales-report-table .text-right {
+    text-align: right;
+}
+
+.sales-report-table .text-center {
+    text-align: center;
+}
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+.pagination-info {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pagination-btn {
+    padding: 0.5rem 1rem;
+    background-color: white;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: #f8fafc;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-btn.active {
+    background-color: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.pagination-btn.active:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+/* Sales Report Info Bar */
+.sales-report-info-bar {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.sales-report-info-content {
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sales-report-info-icon {
+    font-size: 1.1rem;
+}
+
+.sales-report-info-strong {
+    color: #1e293b;
+}
+
+.sales-report-cache-indicator {
+    color: #f59e0b;
+    font-size: 0.8125rem;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Sales Report Table Container */
+.sales-report-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.sales-report-table-wrapper {
+    margin: 0;
+}
+
+.sales-report-table-wrapper th {
+    min-width: 120px;
+}
+
+.sales-report-table-wrapper th.sales-col-date {
+    min-width: 180px;
+}
+
+.sales-report-table-wrapper th.sales-col-expand {
+    min-width: 40px;
+    width: 40px;
+}
+
+.sales-report-table-wrapper th.sales-col-customer {
+    min-width: 150px;
+}
+
+.sales-report-table-wrapper th.sales-col-product {
+    min-width: 180px;
+}
+
+.sales-report-table-wrapper th.sales-col-quantity {
+    min-width: 100px;
+}
+
+.sales-report-table-wrapper th.sales-col-amount {
+    min-width: 130px;
+}
+
+.sales-report-table-wrapper th.sales-col-cashier {
+    min-width: 120px;
+}
+
+/* Sales Report Table Rows */
+.sales-report-table-row {
+    transition: background-color 0.2s ease;
+}
+
+.sales-report-row-expandable {
+    cursor: pointer;
+}
+
+.sales-report-row-expandable.expanded {
+    background-color: #f0f7ff;
+}
+
+.sales-cell-expand {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.sales-expand-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: #2563eb;
+    padding: 2px 6px;
+    line-height: 1;
+}
+
+.sales-expand-placeholder {
+    color: #cbd5e1;
+    font-size: 10px;
+}
+
+.sales-report-item-row {
+    background-color: #f8fafc;
+}
+
+.sales-report-item-row td {
+    border-top: none;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    font-size: 0.92em;
+    color: #475569;
+}
+
+.sales-cell-muted {
+    color: transparent;
+}
+
+/* Sales Report Table Cells */
+.sales-cell-date {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.sales-cell-customer {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.sales-cell-product {
+    color: #1e293b;
+}
+
+.sales-cell-quantity {
+    font-weight: 500;
+    color: #475569;
+}
+
+.sales-cell-amount {
+    font-weight: 600;
+    color: #059669;
+}
+
+.sales-cell-cashier {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.sales-cell-cashier-na {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Sales Report Empty State */
+.sales-report-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.sales-report-empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sales-report-empty-state-icon {
+    font-size: 2rem;
+}
+
+/* Chart Bar - Dynamic height handled inline, but base styles here */
+.chart-bar .bar {
+    transition: height 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .sales-report-filters {
+        flex-direction: column;
+    }
+    
+    .sales-report-filters .filter-group {
+        width: 100%;
+    }
+    
+    .sales-report-table {
+        font-size: 0.75rem;
+    }
+    
+    .sales-report-table th,
+    .sales-report-table td {
+        padding: 0.5rem;
+    }
+    
+    .pagination-controls {
+        flex-wrap: wrap;
+    }
+    
+    .pagination-info {
+        flex-wrap: wrap;
+    }
+}
+
