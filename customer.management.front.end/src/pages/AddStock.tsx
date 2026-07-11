@@ -70,7 +70,7 @@ export const AddStockPage = () => {
     [productOptions]
   );
 
-  const handleSubmit = async (data: Record<string, any>) => {
+  const handleSubmit = async (data: Partial<{ productId: string; quantity: number; note: string }>) => {
     const quantity = Number(data.quantity);
     if (!data.productId) {
       throw new Error("Please select a product.");
@@ -90,7 +90,6 @@ export const AddStockPage = () => {
     setLastResult(
       `Added ${result.addedQuantity} to ${result.productName}. Stock ${result.previousStock} → ${result.newStock}.`
     );
-    return result;
   };
 
   const handleSuccess = () => {
@@ -168,7 +167,7 @@ export const AddStockPage = () => {
         )}
       </div>
 
-      <GenericForm
+      <GenericForm<{ productId: string; quantity: number; note: string }>
         title="Add Stock"
         fields={fields}
         mode="create"
