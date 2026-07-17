@@ -50,5 +50,46 @@ namespace customer.management.api.Controllers
                 return StatusCode(500, new { error = "An error occurred while creating the expense", details = ex.Message });
             }
         }
+
+        // PUT: api/expense/{id}
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<ExpenseDto>> UpdateExpense(Guid id, CreateExpenseDto updateDto)
+        {
+            try
+            {
+                var performedBy = ActorHelper.GetPerformedByUserId(this, updateDto.PerformedByUserId);
+                var result = await _expenseService.UpdateExpenseAsync(id, updateDto, performedBy);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while updating the expense", details = ex.Message });
+            }
+        }
+
+        // DELETE: api/expense/{id}
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteExpense(Guid id, [FromQuery] Guid? performedByUserId = null)
+        {
+            try
+            {
+                var performedBy = ActorHelper.GetPerformedByUserId(this, performedByUserId);
+                var deleted = await _expenseService.DeleteExpenseAsync(id, performedBy);
+                if (!deleted)
+                {
+                    return NotFound(new { error = $"Expense with ID {id} not found" });
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while deleting the expense", details = ex.Message });
+            }
+        }
     }
 }

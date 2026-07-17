@@ -155,6 +155,155 @@ namespace customer.management.api.Services
         }
 
         /// <summary>
+        /// Update an expense and its linked CashFlow entry
+        /// </summary>
+        public async Task<ExpenseDto> UpdateExpenseAsync(Guid id, CreateExpenseDto updateDto, Guid? performedByUserId)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            var updated = await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id);
+                    if (expense == null)
+                    {
+                        throw new ArgumentException($"Expense with ID {id} not found.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(updateDto.Description))
+                    {
+                        throw new ArgumentException("Description is required.");
+                    }
+
+                    if (updateDto.Amount <= 0)
+                    {
+                        throw new ArgumentException("Amount must be greater than 0.");
+                    }
+
+                    expense.Description = updateDto.Description.Trim();
+                    expense.Amount = updateDto.Amount;
+                    if (updateDto.ExpenseDate.HasValue)
+                    {
+                        expense.ExpenseDate = updateDto.ExpenseDate.Value;
+                    }
+
+                    var cashFlows = await _context.CashFlows
+                        .Where(cf => cf.ReferenceId == id && cf.FlowType == "EXPENSE")
+                        .ToListAsync();
+
+                    foreach (var cashFlow in cashFlows)
+                    {
+                        cashFlow.Amount = expense.Amount;
+                        cashFlow.FlowDate = expense.ExpenseDate;
+                        cashFlow.Info = $"Expense: {expense.Description}";
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return MapToDto(expense);
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    _context.ChangeTracker.Clear();
+                    throw;
+                }
+            });
+
+            if (performedByUserId.HasValue)
+            {
+                try
+                {
+                    await _userActivityService.LogAsync(
+                        performedByUserId.Value,
+                        "UPDATE_EXPENSE",
+                        "Expense",
+                        updated.Id,
+                        $"Updated expense '{updated.Description}' to {updated.Amount:N2}");
+                }
+                catch
+                {
+                    // Never fail the update because of audit logging.
+                }
+            }
+
+            return updated;
+        }
+
+        /// <summary>
+        /// Delete an expense and cascade-remove linked CashFlow + UserActivity records
+        /// </summary>
+        public async Task<bool> DeleteExpenseAsync(Guid id, Guid? performedByUserId)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            var deletedDescription = string.Empty;
+            var deletedAmount = 0m;
+            var deleted = await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id);
+                    if (expense == null)
+                    {
+                        return false;
+                    }
+
+                    deletedDescription = expense.Description;
+                    deletedAmount = expense.Amount;
+
+                    var cashFlows = await _context.CashFlows
+                        .Where(cf => cf.ReferenceId == id && cf.FlowType == "EXPENSE")
+                        .ToListAsync();
+                    if (cashFlows.Count > 0)
+                    {
+                        _context.CashFlows.RemoveRange(cashFlows);
+                    }
+
+                    var activities = await _context.UserActivities
+                        .Where(a => a.EntityId == id && a.EntityType == "Expense")
+                        .ToListAsync();
+                    if (activities.Count > 0)
+                    {
+                        _context.UserActivities.RemoveRange(activities);
+                    }
+
+                    _context.Expenses.Remove(expense);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    _context.ChangeTracker.Clear();
+                    throw;
+                }
+            });
+
+            if (deleted && performedByUserId.HasValue)
+            {
+                try
+                {
+                    await _userActivityService.LogAsync(
+                        performedByUserId.Value,
+                        "DELETE_EXPENSE",
+                        "Expense",
+                        id,
+                        $"Deleted expense '{deletedDescription}' for {deletedAmount:N2}");
+                }
+                catch
+                {
+                    // Never fail the delete because of audit logging.
+                }
+            }
+
+            return deleted;
+        }
+
+        /// <summary>
         /// Map entity to DTO
         /// </summary>
         private ExpenseDto MapToDto(ExpenseModelEntity expense)
