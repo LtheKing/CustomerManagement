@@ -1,6 +1,6 @@
 import { useMemo, useState, FormEvent } from "react";
 import { apiService } from "../services/api";
-import { CreateSalesTransactionRequest, Customer, Product } from "../types";
+import { Customer, Product } from "../types";
 import { getCurrentUser } from "../utils/auth";
 import { formatCurrency, getProductImageUrl } from "../utils/helpers";
 import "../assets/components-styles/GenericForm.css";
@@ -193,19 +193,18 @@ export function SalesTransactionForm({
       const transactionId = crypto.randomUUID();
       const saleDate = new Date().toISOString();
 
-      for (const item of cart) {
-        const request: CreateSalesTransactionRequest = {
-          customerName: trimmedCustomerName,
+      await apiService.createSalesBatch({
+        customerName: trimmedCustomerName,
+        cashierName,
+        saleDate,
+        createdBy,
+        transactionId,
+        items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
           amount: item.amount,
-          cashierName,
-          saleDate,
-          createdBy,
-          transactionId,
-        };
-        await apiService.createSalesTransaction(request);
-      }
+        })),
+      });
 
       clearCart();
       onSuccess();

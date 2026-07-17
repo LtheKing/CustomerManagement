@@ -104,7 +104,7 @@ export const Customers = () => {
     const fetchData = async () => {
       try {
         setLoading({ isLoading: true, error: null });
-        const customersData = await apiService.getCustomers();
+        const customersData = await apiService.getCustomers(true);
         setCustomers(customersData);
         setLoading({ isLoading: false, error: null });
       } catch (error) {

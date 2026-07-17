@@ -120,8 +120,9 @@ class ApiService {
   }
 
   // Customer endpoints
-  async getCustomers(): Promise<CustomerResponse[]> {
-    return this.fetchData<CustomerResponse[]>('/customers');
+  async getCustomers(includeDetails: boolean = false): Promise<CustomerResponse[]> {
+    const query = includeDetails ? '?includeDetails=true' : '';
+    return this.fetchData<CustomerResponse[]>(`/customers${query}`);
   }
 
   async getCustomer(id: string): Promise<CustomerResponse> {
@@ -209,7 +210,7 @@ class ApiService {
   }
 
   async getSalesData(): Promise<SalesData[]> {
-    const customers = await this.getCustomers();
+    const customers = await this.getCustomers(true);
     
     // Group sales by month for the last 6 months
     const last6Months = Array.from({ length: 6 }, (_, i) => {
@@ -638,6 +639,78 @@ class ApiService {
       saleDate: result.SaleDate || result.saleDate,
       createdBy: result.CreatedBy || result.createdBy,
     };
+  }
+
+  /** One request for the whole cart — much faster than N sequential createSalesTransaction calls */
+  async createSalesBatch(request: {
+    customerId?: string;
+    customerName?: string;
+    cashierName?: string;
+    saleDate?: string;
+    createdBy: string;
+    transactionId?: string;
+    items: Array<{ productId: string; quantity: number; amount: number }>;
+  }): Promise<SalesTransactionResponse[]> {
+    const requestBody: Record<string, unknown> = {
+      CreatedBy: request.createdBy,
+      CashierName: request.cashierName || "",
+      Items: request.items.map((item) => ({
+        ProductId: item.productId,
+        Quantity: item.quantity,
+        Amount: item.amount,
+      })),
+    };
+
+    if (request.customerId) {
+      requestBody.CustomerId = request.customerId;
+    } else if (request.customerName) {
+      requestBody.CustomerName = request.customerName;
+    }
+
+    if (request.saleDate) {
+      requestBody.SaleDate = request.saleDate;
+    }
+
+    if (request.transactionId) {
+      requestBody.TransactionId = request.transactionId;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/Sales/batch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    const rows = Array.isArray(result) ? result : [];
+    return rows.map((row: any) => ({
+      id: row.Id || row.id,
+      transactionId: row.TransactionId || row.transactionId || row.Id || row.id,
+      customerId: row.CustomerId || row.customerId,
+      productId: row.ProductId || row.productId,
+      quantity: row.Quantity || row.quantity,
+      amount: row.Amount || row.amount,
+      cashierName: row.CashierName || row.cashierName,
+      saleDate: row.SaleDate || row.saleDate,
+      createdBy: row.CreatedBy || row.createdBy,
+    }));
   }
 
   // Product endpoints
