@@ -43,55 +43,42 @@ const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
 };
 
 const AnalyticTab = ({ customers, dashboardStats, salesTransactions }: { customers: Customer[]; dashboardStats: DashboardStats | null; salesTransactions: SalesType[] }) => {
-  // Helper function to calculate sales data from actual transactions (same as Dashboard)
+  // Helper function to calculate sales data from actual transactions (last 8 weeks, Sunday–Saturday)
   const calculateSalesTrendData = (sales: SalesType[]): SalesData[] => {
-    // Get last 6 months - ensure we get unique consecutive months
     const now = new Date();
-    const last6Months: Date[] = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      last6Months.push(date);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Start of current week (Sunday) — matches order days in the sales report
+    const daysFromSunday = startOfToday.getDay();
+    const currentWeekStart = new Date(startOfToday);
+    currentWeekStart.setDate(startOfToday.getDate() - daysFromSunday);
+
+    const weeks: { start: Date; end: Date; label: string }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(currentWeekStart);
+      start.setDate(currentWeekStart.getDate() - i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      weeks.push({
+        start,
+        end,
+        label: start.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      });
     }
 
-    // Use a Map to ensure unique months and aggregate data
-    const monthDataMap = new Map<string, { month: string; sales: number; customers: Set<string> }>();
+    return weeks.map(({ start, end, label }) => {
+      const weekSales = sales.filter((sale) => {
+        const saleDate = new Date(sale.saleDate);
+        const localSaleDay = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+        return localSaleDay >= start && localSaleDay < end;
+      });
 
-    last6Months.forEach(date => {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`; // YYYY-MM format
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-      
-      // Initialize if not exists
-      if (!monthDataMap.has(monthKey)) {
-        monthDataMap.set(monthKey, {
-          month: monthName,
-          sales: 0,
-          customers: new Set()
-        });
-      }
-      
-      // Filter sales for this month
-      const monthSales = sales.filter(sale => sale.saleDate.startsWith(monthKey));
-      
-      // Aggregate data
-      const monthData = monthDataMap.get(monthKey)!;
-      monthData.sales = monthSales.reduce((sum, sale) => sum + sale.amount, 0);
-      monthSales.forEach(sale => monthData.customers.add(sale.customerId));
-    });
+      const customers = new Set(weekSales.map((sale) => sale.customerId));
 
-    // Convert to array maintaining order
-    return last6Months.map(date => {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-      const monthData = monthDataMap.get(monthKey)!;
-      
       return {
-        month: monthData.month,
-        sales: monthData.sales,
-        customers: monthData.customers.size
+        month: label,
+        sales: weekSales.reduce((sum, sale) => sum + sale.amount, 0),
+        customers: customers.size,
       };
     });
   };
@@ -101,7 +88,7 @@ const AnalyticTab = ({ customers, dashboardStats, salesTransactions }: { custome
   return (
     <div className="sales-grid">
       <div className="sales-chart">
-        <SimpleChart data={actualSalesTrendData} title="Monthly Sales Performance" />
+        <SimpleChart data={actualSalesTrendData} title="Weekly Sales Performance (Last 8 Weeks)" />
       </div>
       <div className="customer-insights">
         <h3>Customer Insights</h3>
@@ -638,7 +625,7 @@ export const Sales = () => {
         const [customersData, statsData, salesTransactionsResult] = await Promise.all([
           apiService.getCustomers(),
           apiService.getDashboardStats(),
-          apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
+          apiService.getAllSalesTransactions().catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
         ]);
 
         setCustomers(customersData);

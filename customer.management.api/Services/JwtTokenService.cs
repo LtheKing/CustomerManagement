@@ -28,11 +28,14 @@ namespace customer.management.api.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var jwtKey = _configuration["Jwt:Key"] 
                 ?? _configuration["JWT_KEY"]
-                ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!"; // Default fallback
+                ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForHS256Algorithm!";
             var key = Encoding.UTF8.GetBytes(jwtKey);
+            var issuer = _configuration["Jwt:Issuer"] ?? "CustomerManagementAPI";
+            var audience = _configuration["Jwt:Audience"] ?? "CustomerManagementClient";
             
             var claims = new List<Claim>
             {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Email, user.Email),
@@ -42,9 +45,9 @@ namespace customer.management.api.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(30), // Short-lived access token
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(30),
+                Issuer = issuer,
+                Audience = audience,
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature)

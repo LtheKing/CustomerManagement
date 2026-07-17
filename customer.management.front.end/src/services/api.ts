@@ -148,29 +148,63 @@ class ApiService {
     });
   }
 
-  // Dashboard data processing
+  // Dashboard data processing — always from Sales table (same source as charts)
   async getDashboardStats(): Promise<DashboardStats> {
-    const customers = await this.getCustomers();
-    
-    // Calculate stats from customer data
+    const [customers, salesResult] = await Promise.all([
+      this.getCustomers(),
+      this.getAllSalesTransactions(),
+    ]);
+
+    const sales = salesResult.data;
     const totalCustomers = customers.length;
-    const activeCustomers = customers.filter(c => 
-      c.sales && c.sales.length > 0 && 
-      new Date(c.sales[c.sales.length - 1]?.saleDate) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const activeCustomers = customers.filter((c) =>
+      sales.some(
+        (sale) =>
+          sale.customerId === c.id && new Date(sale.saleDate) > thirtyDaysAgo
+      )
     ).length;
-    
-    const totalRevenue = customers.reduce((sum, customer) => 
-      sum + customer.sales.reduce((customerSum, sale) => customerSum + sale.amount, 0), 0
-    );
-    
-    const totalSales = customers.reduce((sum, customer) => sum + customer.sales.length, 0);
+
+    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+    const totalSales = sales.length;
     const avgOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
     return {
       totalRevenue,
       totalCustomers,
       activeCustomers,
-      avgOrderValue
+      avgOrderValue,
+    };
+  }
+
+  async getAllSalesTransactions(): Promise<PagedResult<Sales>> {
+    const pageSize = 200;
+    let page = 1;
+    let totalPages = 1;
+    const allSales: Sales[] = [];
+
+    while (page <= totalPages) {
+      const result = await this.getSalesTransactions(page, pageSize);
+      allSales.push(...(result.data || []));
+      totalPages = Math.max(result.totalPages || 1, 1);
+      if (!result.data?.length || page >= totalPages) {
+        break;
+      }
+      page += 1;
+      // Safety cap to avoid runaway loops
+      if (page > 50) {
+        break;
+      }
+    }
+
+    return {
+      data: allSales,
+      totalCount: allSales.length,
+      page: 1,
+      pageSize: allSales.length,
+      totalPages: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
     };
   }
 

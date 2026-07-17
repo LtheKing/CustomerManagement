@@ -49,8 +49,13 @@ namespace customer.management.api.Controllers
         {
             try
             {
-                // Get user ID from JWT claims
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                // Get user ID from JWT claims (support mapped + unmapped claim types)
+                var userIdClaim =
+                    User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                    ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)
+                    ?? User.FindFirst("sub")
+                    ?? User.FindFirst("nameid");
+
                 if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
                 {
                     return Unauthorized(new { error = "Invalid token" });

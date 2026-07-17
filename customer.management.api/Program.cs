@@ -201,6 +201,8 @@ builder.Services
     {
         options.RequireHttpsMetadata = false; // Set to true in production with HTTPS
         options.SaveToken = true;
+        // Keep long claim type names so ClaimTypes.NameIdentifier resolves after validation
+        options.MapInboundClaims = true;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -214,7 +216,9 @@ builder.Services
             ValidAudience = jwtAudience,
 
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.FromMinutes(1),
+            NameClaimType = System.Security.Claims.ClaimTypes.Name,
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };
         
         // Extract token from cookie if not in Authorization header

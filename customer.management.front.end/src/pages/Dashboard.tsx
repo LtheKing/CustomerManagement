@@ -229,25 +229,25 @@ export const Dashboard = () => {
     };
   };
 
-  // Helper function to find most sold product
+  // Helper function to find most sold product (by quantity)
   const getMostSoldProduct = (sales: Sales[]): { name: string; count: number } | null => {
     if (sales.length === 0) return null;
 
-    const productCounts = new Map<string, number>();
+    const productQty = new Map<string, number>();
     const productNames = new Map<string, string>();
 
-    sales.forEach(sale => {
-      const count = productCounts.get(sale.productId) || 0;
-      productCounts.set(sale.productId, count + 1);
+    sales.forEach((sale) => {
+      const qty = productQty.get(sale.productId) || 0;
+      productQty.set(sale.productId, qty + (sale.quantity || 0));
       productNames.set(sale.productId, sale.productName);
     });
 
-    let maxCount = 0;
+    let maxQty = 0;
     let mostSoldProductId = "";
 
-    productCounts.forEach((count, productId) => {
-      if (count > maxCount) {
-        maxCount = count;
+    productQty.forEach((qty, productId) => {
+      if (qty > maxQty) {
+        maxQty = qty;
         mostSoldProductId = productId;
       }
     });
@@ -255,62 +255,49 @@ export const Dashboard = () => {
     if (mostSoldProductId) {
       return {
         name: productNames.get(mostSoldProductId) || "Unknown",
-        count: maxCount,
+        count: maxQty,
       };
     }
 
     return null;
   };
 
-  // Helper function to calculate sales data from actual transactions
+  // Helper function to calculate sales data from actual transactions (last 8 weeks, Sunday–Saturday)
   const calculateSalesTrendData = (sales: Sales[]): SalesData[] => {
-    // Get last 6 months - ensure we get unique consecutive months
     const now = new Date();
-    const last6Months: Date[] = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      last6Months.push(date);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Start of current week (Sunday) — matches order days in the sales report
+    const daysFromSunday = startOfToday.getDay(); // 0 Sun .. 6 Sat
+    const currentWeekStart = new Date(startOfToday);
+    currentWeekStart.setDate(startOfToday.getDate() - daysFromSunday);
+
+    const weeks: { start: Date; end: Date; label: string }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(currentWeekStart);
+      start.setDate(currentWeekStart.getDate() - i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7); // exclusive end
+      weeks.push({
+        start,
+        end,
+        label: start.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      });
     }
 
-    // Use a Map to ensure unique months and aggregate data
-    const monthDataMap = new Map<string, { month: string; sales: number; customers: Set<string> }>();
+    return weeks.map(({ start, end, label }) => {
+      const weekSales = sales.filter((sale) => {
+        const saleDate = new Date(sale.saleDate);
+        const localSaleDay = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+        return localSaleDay >= start && localSaleDay < end;
+      });
 
-    last6Months.forEach(date => {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`; // YYYY-MM format
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-      
-      // Initialize if not exists
-      if (!monthDataMap.has(monthKey)) {
-        monthDataMap.set(monthKey, {
-          month: monthName,
-          sales: 0,
-          customers: new Set()
-        });
-      }
-      
-      // Filter sales for this month
-      const monthSales = sales.filter(sale => sale.saleDate.startsWith(monthKey));
-      
-      // Aggregate data
-      const monthData = monthDataMap.get(monthKey)!;
-      monthData.sales = monthSales.reduce((sum, sale) => sum + sale.amount, 0);
-      monthSales.forEach(sale => monthData.customers.add(sale.customerId));
-    });
+      const customers = new Set(weekSales.map((sale) => sale.customerId));
 
-    // Convert to array maintaining order
-    return last6Months.map(date => {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-      const monthData = monthDataMap.get(monthKey)!;
-      
       return {
-        month: monthData.month,
-        sales: monthData.sales,
-        customers: monthData.customers.size
+        month: label,
+        sales: weekSales.reduce((sum, sale) => sum + sale.amount, 0),
+        customers: customers.size,
       };
     });
   };
@@ -323,7 +310,7 @@ export const Dashboard = () => {
         // Fetch all data in parallel
         const [statsData, salesTransactionsResult] = await Promise.all([
           apiService.getDashboardStats(),
-          apiService.getSalesTransactions(1, 1000).catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 1000, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
+          apiService.getAllSalesTransactions().catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
         ]);
 
         setDashboardStats(statsData);
@@ -505,7 +492,7 @@ export const Dashboard = () => {
                   <StatCard 
                     title="Most Sold Product" 
                     value={mostSoldProduct ? mostSoldProduct.name : "No sales yet"} 
-                    change={mostSoldProduct ? `${mostSoldProduct.count} sales` : ""} 
+                    change={mostSoldProduct ? `${mostSoldProduct.count} sold` : ""} 
                     icon="🏆"
                   />
                   <StatCard 
@@ -519,12 +506,15 @@ export const Dashboard = () => {
 
               <div className="dashboard-grid">
                 <div className="chart-section">
-                  <SimpleChart data={actualSalesTrendData} title="Sales Trend (Last 6 Months)" />
+                  <SimpleChart data={actualSalesTrendData} title="Sales Trend (Last 8 Weeks)" />
                 </div>
                 <div className="table-section">
                   <ProductSalesTable sales={salesTransactions} />
                 </div>
               </div>
+              <p style={{ marginTop: "0.75rem", color: "#64748b", fontSize: "0.875rem" }}>
+                Total Revenue is all-time from sales. The weekly chart only includes the last 8 weeks, so its bars will not sum to Total Revenue.
+              </p>
             </div>
           ) : activeTab === "sales" && isAdmin() ? (
             <SalesPage />
