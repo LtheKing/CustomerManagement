@@ -232,7 +232,7 @@ const ReportTab = () => {
   const fetchCustomersAndProducts = async () => {
     try {
       const [customersData, productsData] = await Promise.all([
-        apiService.getCustomers(),
+        apiService.getCustomers(true),
         apiService.getProducts()
       ]);
       setCustomers(customersData);
@@ -623,7 +623,7 @@ export const Sales = () => {
         
         // Fetch all data in parallel
         const [customersData, statsData, salesTransactionsResult] = await Promise.all([
-          apiService.getCustomers(),
+          apiService.getCustomers(true),
           apiService.getDashboardStats(),
           apiService.getAllSalesTransactions().catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
         ]);

@@ -291,6 +291,171 @@ namespace customer.management.api.Services
             });
         }
 
+        /// <summary>
+        /// Create all cart line items in one DB transaction (one customer resolve, one commit).
+        /// </summary>
+        public async Task<IReadOnlyList<SalesDto>> CreateSalesBatchAsync(CreateBatchSalesDto createDto)
+        {
+            if (!createDto.CustomerId.HasValue && string.IsNullOrWhiteSpace(createDto.CustomerName))
+            {
+                throw new ArgumentException("Either CustomerId or CustomerName must be provided");
+            }
+
+            if (createDto.Items == null || createDto.Items.Count == 0)
+            {
+                throw new ArgumentException("At least one cart item is required");
+            }
+
+            var user = await _context.Users.FindAsync(createDto.CreatedBy);
+            if (user == null)
+            {
+                throw new ArgumentException($"User with ID {createDto.CreatedBy} not found");
+            }
+
+            var productIds = createDto.Items.Select(i => i.ProductId).Distinct().ToList();
+            var products = await _context.Products
+                .Where(p => productIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+
+            foreach (var item in createDto.Items)
+            {
+                if (!products.TryGetValue(item.ProductId, out var product))
+                {
+                    throw new ArgumentException($"Product with ID {item.ProductId} not found");
+                }
+
+                if (!product.IsActive)
+                {
+                    throw new ArgumentException($"Product '{product.Name}' is not active.");
+                }
+
+                if (product.Stock < item.Quantity)
+                {
+                    throw new ArgumentException(
+                        $"Insufficient stock for '{product.Name}'. Available: {product.Stock}, requested: {item.Quantity}.");
+                }
+            }
+
+            // Aggregate stock checks when the same product appears more than once
+            foreach (var group in createDto.Items.GroupBy(i => i.ProductId))
+            {
+                var product = products[group.Key];
+                var totalQty = group.Sum(i => i.Quantity);
+                if (product.Stock < totalQty)
+                {
+                    throw new ArgumentException(
+                        $"Insufficient stock for '{product.Name}'. Available: {product.Stock}, requested: {totalQty}.");
+                }
+            }
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    CustomerModelEntity? customer;
+                    Guid resolvedCustomerId;
+
+                    if (createDto.CustomerId.HasValue)
+                    {
+                        customer = await _context.Customers.FindAsync(createDto.CustomerId.Value);
+                        if (customer == null)
+                        {
+                            throw new ArgumentException($"Customer with ID {createDto.CustomerId.Value} not found");
+                        }
+                        resolvedCustomerId = customer.Id;
+                    }
+                    else
+                    {
+                        var customerName = createDto.CustomerName!.Trim();
+
+                        customer = await _context.Customers
+                            .FirstOrDefaultAsync(c => c.Name.ToLower() == customerName.ToLower());
+
+                        if (customer != null)
+                        {
+                            resolvedCustomerId = customer.Id;
+                        }
+                        else
+                        {
+                            customer = new CustomerModelEntity
+                            {
+                                Id = Guid.NewGuid(),
+                                Name = customerName,
+                                CreatedBy = createDto.CreatedBy,
+                                CreatedAt = DateTime.UtcNow,
+                                Email = null,
+                                Phone = null,
+                                Address = null,
+                                Company = null,
+                                UpdatedAt = null
+                            };
+
+                            _context.Customers.Add(customer);
+                            await _context.SaveChangesAsync();
+                            resolvedCustomerId = customer.Id;
+                        }
+                    }
+
+                    var transactionId = createDto.TransactionId ?? Guid.NewGuid();
+                    var saleDate = createDto.SaleDate ?? DateTime.UtcNow;
+                    var createdSaleIds = new List<Guid>();
+
+                    foreach (var item in createDto.Items)
+                    {
+                        var product = products[item.ProductId];
+                        var saleId = Guid.NewGuid();
+
+                        _context.Sales.Add(new SalesModelEntity
+                        {
+                            Id = saleId,
+                            TransactionId = transactionId,
+                            CustomerId = resolvedCustomerId,
+                            ProductId = item.ProductId,
+                            Quantity = item.Quantity,
+                            Amount = item.Amount,
+                            CashierName = createDto.CashierName,
+                            SaleDate = saleDate,
+                            CreatedBy = createDto.CreatedBy
+                        });
+
+                        product.Stock -= item.Quantity;
+                        product.UpdatedAt = DateTime.UtcNow;
+
+                        _context.CashFlows.Add(new CashFlowModelEntity
+                        {
+                            Id = Guid.NewGuid(),
+                            FlowType = "SALES",
+                            ReferenceId = saleId,
+                            Amount = item.Amount,
+                            FlowDate = new DateTimeOffset(saleDate, TimeSpan.Zero),
+                            Info = $"Sales transaction: {product.Name} x{item.Quantity} to {customer.Name}"
+                        });
+
+                        createdSaleIds.Add(saleId);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    var createdSales = await _context.Sales
+                        .Include(s => s.Customer)
+                        .Include(s => s.Product)
+                        .Include(s => s.User)
+                        .Where(s => createdSaleIds.Contains(s.Id))
+                        .ToListAsync();
+
+                    return createdSales.Select(MapToDto).ToList();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
         private IQueryable<SalesModelEntity> BuildFilteredSalesQuery(GetSalesPagedRequest request)
         {
             var query = _context.Sales

@@ -17,14 +17,22 @@ namespace customer.management.api.Controllers
         }
 
         // GET: api/customers
+        // includeDetails=true loads Sales (needed by Customers/Sales pages). Cashier uses the light list.
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CustomerModelEntity>>> GetCustomers()
+        public async Task<ActionResult<IEnumerable<CustomerModelEntity>>> GetCustomers(
+            [FromQuery] bool includeDetails = false)
         {
-            return await _context.Customers
-                .Include(c => c.User)
-                .Include(c => c.Sales)
-                .Include(c => c.Traffic)
-                .ToListAsync();
+            var query = _context.Customers.AsNoTracking().AsQueryable();
+
+            if (includeDetails)
+            {
+                query = query
+                    .Include(c => c.User)
+                    .Include(c => c.Sales)
+                    .Include(c => c.Traffic);
+            }
+
+            return await query.OrderBy(c => c.Name).ToListAsync();
         }
 
         // GET: api/customers/traffic

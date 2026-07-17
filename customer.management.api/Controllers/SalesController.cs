@@ -106,6 +106,30 @@ namespace customer.management.api.Controllers
                 return StatusCode(500, new { error = "An error occurred while creating the sales transaction", details = ex.Message });
             }
         }
+
+        // POST: api/sales/batch — one checkout for the whole cart (avoids N sequential POSTs)
+        [HttpPost("batch")]
+        public async Task<ActionResult<IReadOnlyList<SalesDto>>> CreateSalesBatch(CreateBatchSalesDto createDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var result = await _salesService.CreateSalesBatchAsync(createDto);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while creating the sales batch", details = ex.Message });
+            }
+        }
     }
 }
 

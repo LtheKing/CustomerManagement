@@ -17,9 +17,10 @@ primary_region = 'iad'
   internal_port = 8080
   force_https = true
   ipv6 = false
-  auto_stop_machines = true
+  # Keep warm so cashier/product loads aren't delayed by cold starts (dev was ~5s)
+  auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
   [[http_service.checks]]
