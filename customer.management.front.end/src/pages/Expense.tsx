@@ -8,6 +8,7 @@ import { getCurrentUser, isAdmin } from "../utils/auth";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 import "../assets/page-styles/Expense.css";
+import "../assets/page-styles/Product.css";
 import "../assets/page-styles/Cashier.css";
 
 export const Expense = () => {
@@ -26,6 +27,7 @@ export const Expense = () => {
   });
   const [loading, setLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseType | null>(null);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -321,43 +323,28 @@ export const Expense = () => {
     ];
   };
 
+  const buildExpenseDateIso = (expenseDateValue?: string): string | undefined => {
+    if (!expenseDateValue) {
+      return undefined;
+    }
+
+    const dateParts = expenseDateValue.split("-");
+    if (dateParts.length !== 3) {
+      return undefined;
+    }
+
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    const now = new Date();
+    const localDate = new Date(year, month, day, now.getHours(), now.getMinutes(), now.getSeconds());
+    return isNaN(localDate.getTime()) ? undefined : localDate.toISOString();
+  };
+
   const handleExpenseSubmit = async (formData: Record<string, any>): Promise<void> => {
     const description = formData.description as string;
     const amount = Number(formData.amount);
-    
-    // TIMEZONE HANDLING STRATEGY:
-    // 1. User selects a date (YYYY-MM-DD) - this is a date-only input
-    // 2. We use the current LOCAL time (hours, minutes, seconds) from user's device
-    // 3. Combine selected date + current local time = local datetime
-    // 4. Convert to UTC (ISO string) for storage in database
-    // 5. Backend stores as DateTimeOffset in UTC
-    // 6. When displaying, browser automatically converts UTC back to local timezone
-    let expenseDate: string | undefined = undefined;
-    if (formData.expenseDate) {
-      // Parse the date string (YYYY-MM-DD format from date input)
-      const dateParts = formData.expenseDate.split('-');
-      if (dateParts.length === 3) {
-        const year = parseInt(dateParts[0], 10);
-        const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in JavaScript
-        const day = parseInt(dateParts[2], 10);
-        
-        // Get current local time from user's device
-        const now = new Date();
-        const localHours = now.getHours();
-        const localMinutes = now.getMinutes();
-        const localSeconds = now.getSeconds();
-        
-        // Create date object with selected date + current local time
-        // This creates a date in the user's local timezone
-        const localDate = new Date(year, month, day, localHours, localMinutes, localSeconds);
-        
-        // Convert to ISO string (UTC) - this is what backend expects
-        // toISOString() automatically converts local time to UTC
-        if (!isNaN(localDate.getTime())) {
-          expenseDate = localDate.toISOString();
-        }
-      }
-    }
+    const expenseDate = buildExpenseDateIso(formData.expenseDate as string | undefined);
 
     if (!description || !description.trim()) {
       throw new Error("Description is required");
@@ -367,15 +354,60 @@ export const Expense = () => {
       throw new Error("Amount must be greater than 0");
     }
 
-    await apiService.createExpense(description.trim(), amount, expenseDate, getCurrentUser()?.id);
+    const performedBy = getCurrentUser()?.id;
+    if (editingExpense) {
+      await apiService.updateExpense(
+        editingExpense.id,
+        description.trim(),
+        amount,
+        expenseDate,
+        performedBy
+      );
+    } else {
+      await apiService.createExpense(description.trim(), amount, expenseDate, performedBy);
+    }
   };
 
   const handleExpenseSuccess = async () => {
+    setEditingExpense(null);
     clearCache();
     await Promise.all([
       fetchExpenses(currentPage, true),
       refreshCapitalCash(),
     ]);
+  };
+
+  const handleEditExpense = (expense: ExpenseType) => {
+    setEditingExpense(expense);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteExpense = async (expense: ExpenseType) => {
+    if (!window.confirm(`Delete expense "${expense.description}"? This also removes its cash flow and related activity logs.`)) {
+      return;
+    }
+
+    try {
+      await apiService.deleteExpense(expense.id, getCurrentUser()?.id);
+      clearCache();
+      await Promise.all([
+        fetchExpenses(currentPage, true),
+        refreshCapitalCash(),
+      ]);
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete expense.");
+    }
+  };
+
+  const openCreateExpenseForm = () => {
+    setEditingExpense(null);
+    setIsFormOpen(true);
+  };
+
+  const closeExpenseForm = () => {
+    setIsFormOpen(false);
+    setEditingExpense(null);
   };
 
   return (
@@ -407,7 +439,7 @@ export const Expense = () => {
         <div className="expense-actions-row">
           <button 
             className="new-expense-btn" 
-            onClick={() => setIsFormOpen(true)}
+            onClick={openCreateExpenseForm}
           >
             new expense
           </button>
@@ -523,12 +555,13 @@ export const Expense = () => {
                   <th>Date</th>
                   <th>Description</th>
                   <th className="text-right">Amount</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedResult.data.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                       No expenses found
                     </td>
                   </tr>
@@ -538,6 +571,24 @@ export const Expense = () => {
                       <td>{formatDate(expense.expenseDate)}</td>
                       <td>{expense.description}</td>
                       <td className="text-right">IDR {expense.amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                      <td>
+                        <div className="product-actions-container">
+                          <button
+                            type="button"
+                            className="product-btn product-btn-edit"
+                            onClick={() => handleEditExpense(expense)}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="product-btn product-btn-delete"
+                            onClick={() => handleDeleteExpense(expense)}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -612,17 +663,29 @@ export const Expense = () => {
       />
 
       <GenericForm
-        title="Create New Expense"
+        title={editingExpense ? "Edit Expense" : "Create New Expense"}
         fields={getExpenseFormFields()}
-        mode="create"
-        initialValues={{
-          expenseDate: new Date().toISOString().split('T')[0],
-        }}
+        mode={editingExpense ? "edit" : "create"}
+        initialValues={
+          editingExpense
+            ? {
+                description: editingExpense.description,
+                amount: editingExpense.amount,
+                expenseDate: editingExpense.expenseDate
+                  ? new Date(editingExpense.expenseDate).toISOString().split("T")[0]
+                  : new Date().toISOString().split("T")[0],
+              }
+            : {
+                description: "",
+                amount: 0,
+                expenseDate: new Date().toISOString().split("T")[0],
+              }
+        }
         onSubmit={handleExpenseSubmit}
         onSuccess={handleExpenseSuccess}
-        onClose={() => setIsFormOpen(false)}
+        onClose={closeExpenseForm}
         isOpen={isFormOpen}
-        submitLabel="Create Expense"
+        submitLabel={editingExpense ? "Update Expense" : "Create Expense"}
       />
     </div>
   );

@@ -13,6 +13,8 @@ const ACTIVITY_ACTIONS = [
   { value: "", label: "All Actions" },
   { value: "ADD_STOCK", label: "Add Stock" },
   { value: "CREATE_EXPENSE", label: "Create Expense" },
+  { value: "UPDATE_EXPENSE", label: "Update Expense" },
+  { value: "DELETE_EXPENSE", label: "Delete Expense" },
   { value: "ADJUST_CAPITAL_IN", label: "Adjust Capital In" },
   { value: "ADJUST_CAPITAL_OUT", label: "Adjust Capital Out" },
 ];

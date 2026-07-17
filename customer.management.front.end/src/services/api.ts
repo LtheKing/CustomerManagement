@@ -435,6 +435,87 @@ class ApiService {
     };
   }
 
+  async updateExpense(
+    id: string,
+    description: string,
+    amount: number,
+    expenseDate?: string,
+    performedByUserId?: string
+  ): Promise<any> {
+    const requestBody: any = {
+      Description: description,
+      Amount: amount,
+    };
+
+    if (expenseDate) {
+      requestBody.ExpenseDate = expenseDate;
+    }
+
+    if (performedByUserId) {
+      requestBody.PerformedByUserId = performedByUserId;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/Expense/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      if (response.status === 404) {
+        errorMessage =
+          "Expense update API not found (404). Restart/redeploy the API so PUT /api/Expense/{id} is available.";
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return {
+      id: result.Id || result.id,
+      description: result.Description || result.description,
+      amount: result.Amount || result.amount,
+      expenseDate: result.ExpenseDate || result.expenseDate,
+    };
+  }
+
+  async deleteExpense(id: string, performedByUserId?: string): Promise<void> {
+    const params = performedByUserId
+      ? `?performedByUserId=${encodeURIComponent(performedByUserId)}`
+      : '';
+
+    const response = await fetch(`${API_BASE_URL}/Expense/${id}${params}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+  }
+
   // Sales Transaction endpoints
   async getSalesTransactions(
     page: number = 1,
