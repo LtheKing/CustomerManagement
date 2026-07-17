@@ -91,15 +91,12 @@ namespace customer.management.api.Services
         /// </summary>
         public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseDto createDto, Guid? performedByUserId)
         {
-            // Use execution strategy to support retry on failure with transactions
             var strategy = _context.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            var created = await strategy.ExecuteAsync(async () =>
             {
-                // Use database transaction to ensure atomicity
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // Create new Expense entity
                     var expense = new ExpenseModelEntity
                     {
                         Id = Guid.NewGuid(),
@@ -108,50 +105,53 @@ namespace customer.management.api.Services
                         ExpenseDate = createDto.ExpenseDate ?? DateTimeOffset.UtcNow
                     };
 
-                    // Add to context
                     _context.Expenses.Add(expense);
 
-                    // Save to get the expense ID (within transaction)
-                    await _context.SaveChangesAsync();
-
-                    // Create corresponding CashFlow entry directly in the same context
                     // FlowType "EXPENSE" subtracts from capital (handled in balance calculation)
-                    var cashFlow = new CashFlowModelEntity
+                    _context.CashFlows.Add(new CashFlowModelEntity
                     {
                         Id = Guid.NewGuid(),
                         FlowType = "EXPENSE",
-                        ReferenceId = expense.Id, // Reference to the expense record
-                        Amount = expense.Amount, // Store as positive, balance calculation will subtract it
+                        ReferenceId = expense.Id,
+                        Amount = expense.Amount, // Store as positive; balance calc subtracts it
                         FlowDate = expense.ExpenseDate,
                         Info = $"Expense: {expense.Description}"
-                    };
+                    });
 
-                    _context.CashFlows.Add(cashFlow);
                     await _context.SaveChangesAsync();
-
-                    // Commit transaction - all operations succeed
                     await transaction.CommitAsync();
 
-                    if (performedByUserId.HasValue)
-                    {
-                        await _userActivityService.LogAsync(
-                            performedByUserId.Value,
-                            "CREATE_EXPENSE",
-                            "Expense",
-                            expense.Id,
-                            $"Created expense '{expense.Description}' for {expense.Amount:N2}");
-                    }
-
-                    // Return as DTO
                     return MapToDto(expense);
                 }
                 catch
                 {
-                    // Rollback transaction on any error
                     await transaction.RollbackAsync();
+                    _context.ChangeTracker.Clear();
                     throw;
                 }
             });
+
+            // Audit log MUST stay outside the retryable transaction.
+            // If it ran after Commit inside ExecuteAsync and then failed,
+            // EF would retry and insert a second expense + cashflow (2x amount).
+            if (performedByUserId.HasValue)
+            {
+                try
+                {
+                    await _userActivityService.LogAsync(
+                        performedByUserId.Value,
+                        "CREATE_EXPENSE",
+                        "Expense",
+                        created.Id,
+                        $"Created expense '{created.Description}' for {created.Amount:N2}");
+                }
+                catch
+                {
+                    // Never fail or retry the create because of audit logging.
+                }
+            }
+
+            return created;
         }
 
         /// <summary>

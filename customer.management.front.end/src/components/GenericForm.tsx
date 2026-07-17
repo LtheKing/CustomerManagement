@@ -66,6 +66,7 @@ export function GenericForm<T extends Record<string, any>>({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const wasOpenRef = useRef(false);
+  const isSubmittingRef = useRef(false);
 
   // Initialize form only when the modal opens, not on every parent re-render
   useEffect(() => {
@@ -180,10 +181,15 @@ export function GenericForm<T extends Record<string, any>>({
     e.preventDefault();
     setSubmitError(null);
 
+    if (isSubmittingRef.current) {
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       const result = await onSubmit(formData as Partial<T>);
@@ -201,6 +207,7 @@ export function GenericForm<T extends Record<string, any>>({
       const errorMessage = error instanceof Error ? error.message : "An error occurred while submitting the form";
       setSubmitError(errorMessage);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

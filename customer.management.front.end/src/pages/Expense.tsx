@@ -370,9 +370,12 @@ export const Expense = () => {
     await apiService.createExpense(description.trim(), amount, expenseDate, getCurrentUser()?.id);
   };
 
-  const handleExpenseSuccess = () => {
+  const handleExpenseSuccess = async () => {
     clearCache();
-    fetchExpenses(currentPage, true);
+    await Promise.all([
+      fetchExpenses(currentPage, true),
+      refreshCapitalCash(),
+    ]);
   };
 
   return (
