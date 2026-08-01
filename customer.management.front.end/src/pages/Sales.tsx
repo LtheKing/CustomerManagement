@@ -470,6 +470,14 @@ const ReportTab = () => {
               <span className="sales-report-info-icon">📊</span>
               <span>Showing <strong className="sales-report-info-strong">{pagedResult.data.length}</strong> of <strong className="sales-report-info-strong">{pagedResult.totalCount}</strong> transactions
               {pagedResult.totalPages > 1 && ` (Page ${pagedResult.page} of ${pagedResult.totalPages})`}</span>
+              {pagedResult.filteredTotalAmount !== undefined && (
+                <span className="sales-report-filtered-total">
+                  · Filtered total: <strong className="sales-report-info-strong">{formatAmount(pagedResult.filteredTotalAmount)}</strong>
+                  {pagedResult.filteredTotalQuantity !== undefined && (
+                    <> ({pagedResult.filteredTotalQuantity} qty)</>
+                  )}
+                </span>
+              )}
             </div>
             {!isCacheValid() && (
               <div className="sales-report-cache-indicator">
@@ -554,6 +562,20 @@ const ReportTab = () => {
                   })
                 )}
               </tbody>
+              {pagedResult.data.length > 0 && pagedResult.filteredTotalAmount !== undefined && (
+                <tfoot>
+                  <tr className="sales-report-totals-row">
+                    <td colSpan={4} className="sales-report-totals-label">Filtered total (all pages)</td>
+                    <td className="text-center sales-cell-quantity">
+                      {pagedResult.filteredTotalQuantity ?? "—"}
+                    </td>
+                    <td className="text-right sales-cell-amount">
+                      {formatAmount(pagedResult.filteredTotalAmount)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
           

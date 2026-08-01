@@ -13,6 +13,17 @@ namespace customer.management.api.Models
         public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
         public bool HasPreviousPage => Page > 1;
         public bool HasNextPage => Page < TotalPages;
+
+        /// <summary>
+        /// Sum of matching line amounts across the full filter scope (all pages).
+        /// With a product filter, this is the sum of matching product lines only — not full multi-product checkouts.
+        /// </summary>
+        public decimal? FilteredTotalAmount { get; set; }
+
+        /// <summary>
+        /// Sum of matching line quantities across the full filter scope (all pages).
+        /// </summary>
+        public int? FilteredTotalQuantity { get; set; }
     }
 }
 

@@ -642,6 +642,10 @@ class ApiService {
         totalPages: result.TotalPages || result.totalPages || 0,
         hasPreviousPage: result.HasPreviousPage ?? result.hasPreviousPage ?? false,
         hasNextPage: result.HasNextPage ?? result.hasNextPage ?? false,
+        filteredTotalAmount:
+          result.FilteredTotalAmount ?? result.filteredTotalAmount ?? undefined,
+        filteredTotalQuantity:
+          result.FilteredTotalQuantity ?? result.filteredTotalQuantity ?? undefined,
       };
     } catch (error) {
       console.warn('Grouped sales endpoint not available', error);
@@ -653,6 +657,8 @@ class ApiService {
         totalPages: 0,
         hasPreviousPage: false,
         hasNextPage: false,
+        filteredTotalAmount: 0,
+        filteredTotalQuantity: 0,
       };
     }
   }

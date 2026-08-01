@@ -262,6 +262,27 @@
     color: #1e293b;
 }
 
+.sales-report-filtered-total {
+    color: #334155;
+}
+
+.sales-report-totals-row {
+    background-color: #f1f5f9;
+    border-top: 2px solid #cbd5e1;
+    font-weight: 600;
+}
+
+.sales-report-totals-row td {
+    padding: 0.85rem 0.75rem;
+    color: #0f172a;
+}
+
+.sales-report-totals-label {
+    text-align: right;
+    color: #475569;
+    font-weight: 600;
+}
+
 .sales-report-cache-indicator {
     color: #f59e0b;
     font-size: 0.8125rem;

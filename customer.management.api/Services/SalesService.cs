@@ -104,6 +104,11 @@ namespace customer.management.api.Services
 
             var sales = await BuildFilteredSalesQuery(request).ToListAsync();
 
+            // Sum matching line items in filter scope (not limited to current page).
+            // Product filter → only those product lines, not whole multi-product transactions.
+            var filteredTotalAmount = sales.Sum(s => s.Amount);
+            var filteredTotalQuantity = sales.Sum(s => s.Quantity);
+
             var groups = sales
                 .GroupBy(s => s.TransactionId)
                 .Select(g =>
@@ -145,7 +150,9 @@ namespace customer.management.api.Services
                 Data = pagedGroups,
                 TotalCount = totalCount,
                 Page = request.Page,
-                PageSize = request.PageSize
+                PageSize = request.PageSize,
+                FilteredTotalAmount = filteredTotalAmount,
+                FilteredTotalQuantity = filteredTotalQuantity
             };
         }
 
