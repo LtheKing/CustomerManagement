@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { apiService } from "../services/api";
 import { DashboardStats, SalesData, LoadingState, Sales, ProductSalesData } from "../types";
 import { Cashier } from "./Cashier";
@@ -49,33 +49,33 @@ const StatCard = ({ title, value, change, icon }: { title: string; value: string
   </div>
 );
 
-const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
-  const maxValue = Math.max(...data.map(d => d.sales), 1); // Prevent division by zero
-  
+const SimpleChart = ({ data, title }: { data: SalesData[]; title: string }) => {
+  // Scale bars by income (IDR), not customer count
+  const maxIncome = Math.max(...data.map((d) => d.sales), 1);
+
   return (
     <div className="chart-container">
       <h3>{title}</h3>
       <div className="chart">
         {data.map((item, index) => {
-          const barHeight = maxValue > 0 && item.sales > 0 ? (item.sales / maxValue) * 100 : 0;
+          const incomeRatio = item.sales > 0 ? item.sales / maxIncome : 0;
           return (
             <div key={index} className="chart-bar">
               <div className="bar-value-container">
                 <span className="bar-value">
-                  IDR {item.sales.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  IDR {item.sales.toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
                 <span className="bar-customers">
-                  {item.customers} {item.customers === 1 ? 'customer' : 'customers'}
+                  {item.customers} {item.customers === 1 ? "customer" : "customers"}
                 </span>
               </div>
-              <div 
-                className="bar" 
-                style={{ 
-                  height: barHeight > 0 ? `${barHeight}%` : '2px',
-                  minHeight: barHeight > 0 ? '20px' : '2px'
-                }}
-                title={`${item.month}: IDR ${item.sales.toLocaleString('id-ID')} (${item.customers} customers)`}
-              ></div>
+              <div className="bar-track">
+                <div
+                  className="bar"
+                  style={{ height: `${Math.max(incomeRatio * 100, item.sales > 0 ? 4 : 0)}%` }}
+                  title={`${item.month}: IDR ${item.sales.toLocaleString("id-ID")} (${item.customers} customers)`}
+                />
+              </div>
               <span className="bar-label">{item.month}</span>
             </div>
           );
@@ -156,6 +156,35 @@ export const Dashboard = () => {
   const [salesTransactions, setSalesTransactions] = useState<Sales[]>([]);
   const [loading, setLoading] = useState<LoadingState>({ isLoading: true, error: null });
 
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading({ isLoading: true, error: null });
+
+      const [statsData, salesTransactionsResult] = await Promise.all([
+        apiService.getDashboardStats(),
+        apiService.getAllSalesTransactions().catch(() => ({
+          data: [],
+          totalCount: 0,
+          page: 1,
+          pageSize: 0,
+          totalPages: 0,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        })),
+      ]);
+
+      setDashboardStats(statsData);
+      setSalesTransactions(salesTransactionsResult.data || []);
+      setLoading({ isLoading: false, error: null });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setLoading({
+        isLoading: false,
+        error: error instanceof Error ? error.message : "Failed to fetch data",
+      });
+    }
+  }, []);
+
   // Handle tab change with role-based access control
   const handleTabChange = (tab: string) => {
     // Sales users can only access cashier
@@ -169,6 +198,10 @@ export const Dashboard = () => {
         setProductsNavOpen(true);
       }
       setActiveTab(tab);
+      // Refresh Overview whenever it is opened or clicked again
+      if (tab === "home" && isAdmin()) {
+        fetchDashboardData();
+      }
       return;
     }
     // Default fallback
@@ -302,28 +335,10 @@ export const Dashboard = () => {
     });
   };
 
+  // Initial load / full page refresh
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading({ isLoading: true, error: null });
-        
-        // Fetch all data in parallel
-        const [statsData, salesTransactionsResult] = await Promise.all([
-          apiService.getDashboardStats(),
-          apiService.getAllSalesTransactions().catch(() => ({ data: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false }))
-        ]);
-
-        setDashboardStats(statsData);
-        setSalesTransactions(salesTransactionsResult.data || []);
-        setLoading({ isLoading: false, error: null });
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading({ isLoading: false, error: error instanceof Error ? error.message : 'Failed to fetch data' });
-      }
-    };
-
-    fetchData();
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Calculate month-over-month changes
   const monthData = getMonthData(salesTransactions);

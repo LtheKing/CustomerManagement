@@ -99,21 +99,27 @@ export function GenericForm<T extends Record<string, any>>({
     setSubmitError(null);
   }, [initialValues, isOpen, fields, computedFields]);
 
+  const isEmptyValue = (value: any): boolean =>
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (typeof value === "string" && value.trim() === "");
+
   const validateField = (field: FormField, value: any): string | null => {
-    // Required validation
-    if (field.required && (!value || (typeof value === "string" && value.trim() === ""))) {
+    // Required validation — allow numeric 0
+    if (field.required && isEmptyValue(value)) {
       return `${field.label} is required`;
     }
 
     // Type-specific validation
-    if (value && field.type === "email") {
+    if (!isEmptyValue(value) && field.type === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) {
         return "Please enter a valid email address";
       }
     }
 
-    if (value && field.type === "number") {
+    if (!isEmptyValue(value) && field.type === "number") {
       const numValue = Number(value);
       if (isNaN(numValue)) {
         return "Please enter a valid number";
@@ -127,7 +133,7 @@ export function GenericForm<T extends Record<string, any>>({
     }
 
     // Custom validation
-    if (field.validation && value) {
+    if (field.validation && !isEmptyValue(value)) {
       return field.validation(value);
     }
 

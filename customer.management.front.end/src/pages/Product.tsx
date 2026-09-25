@@ -31,7 +31,7 @@ const PRODUCT_FORM_FIELDS: FormField[] = [
     type: "number",
     required: true,
     placeholder: "0.00",
-    min: 0.01,
+    min: 0,
     step: 0.01,
   },
   {
@@ -274,8 +274,8 @@ export const ProductPage = () => {
       throw new Error("SKU is required");
     }
 
-    if (!price || price <= 0) {
-      throw new Error("Price must be greater than 0");
+    if (Number.isNaN(price) || price < 0) {
+      throw new Error("Price cannot be negative");
     }
 
     if (stock < 0) {

@@ -79,9 +79,9 @@ namespace customer.management.api.Services
                 throw new ArgumentException("SKU is required.");
             }
 
-            if (!createDto.Price.HasValue || createDto.Price.Value <= 0)
+            if (!createDto.Price.HasValue || createDto.Price.Value < 0)
             {
-                throw new ArgumentException("Price must be greater than 0.");
+                throw new ArgumentException("Price cannot be negative.");
             }
 
             // Check if SKU already exists
@@ -149,9 +149,9 @@ namespace customer.management.api.Services
 
             if (updateDto.Price.HasValue)
             {
-                if (updateDto.Price.Value <= 0)
+                if (updateDto.Price.Value < 0)
                 {
-                    throw new ArgumentException("Price must be greater than 0.");
+                    throw new ArgumentException("Price cannot be negative.");
                 }
                 product.Price = updateDto.Price.Value;
             }

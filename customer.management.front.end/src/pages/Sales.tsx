@@ -6,33 +6,32 @@ import type { Sales as SalesType } from "../types";
 import "../assets/page-styles/Dashboard.css";
 import "../assets/page-styles/Sales.css";
 
-const SimpleChart = ({ data, title }: { data: any[]; title: string }) => {
-  const maxValue = Math.max(...data.map(d => d.sales), 1); // Prevent division by zero
-  
+const SimpleChart = ({ data, title }: { data: SalesData[]; title: string }) => {
+  const maxIncome = Math.max(...data.map((d) => d.sales), 1);
+
   return (
     <div className="chart-container">
       <h3>{title}</h3>
       <div className="chart">
         {data.map((item, index) => {
-          const barHeight = maxValue > 0 && item.sales > 0 ? (item.sales / maxValue) * 100 : 0;
+          const incomeRatio = item.sales > 0 ? item.sales / maxIncome : 0;
           return (
             <div key={index} className="chart-bar">
               <div className="bar-value-container">
                 <span className="bar-value">
-                  IDR {item.sales.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  IDR {item.sales.toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
                 <span className="bar-customers">
-                  {item.customers} {item.customers === 1 ? 'customer' : 'customers'}
+                  {item.customers} {item.customers === 1 ? "customer" : "customers"}
                 </span>
               </div>
-              <div 
-                className="bar" 
-                style={{ 
-                  height: barHeight > 0 ? `${barHeight}%` : '2px',
-                  minHeight: barHeight > 0 ? '20px' : '2px'
-                }}
-                title={`${item.month}: IDR ${item.sales.toLocaleString('id-ID')} (${item.customers} customers)`}
-              ></div>
+              <div className="bar-track">
+                <div
+                  className="bar"
+                  style={{ height: `${Math.max(incomeRatio * 100, item.sales > 0 ? 4 : 0)}%` }}
+                  title={`${item.month}: IDR ${item.sales.toLocaleString("id-ID")} (${item.customers} customers)`}
+                />
+              </div>
               <span className="bar-label">{item.month}</span>
             </div>
           );
